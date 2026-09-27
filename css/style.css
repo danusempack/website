@@ -1619,6 +1619,223 @@ dialog::backdrop {
     }
 }
 
+/* ─── Debug Inspector Panel ───────────────────────────────────────────────── */
+
+.debug-panel {
+    position: absolute;
+    top: var(--space-md);
+    left: var(--space-md);
+    z-index: 20;
+    width: 280px;
+    max-height: 70%;
+    background: rgba(11, 12, 16, 0.92);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+}
+
+.debug-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--accent-teal);
+    flex: none;
+}
+
+.debug-content {
+    padding: var(--space-sm) var(--space-md);
+    overflow-y: auto;
+    font-size: 0.72rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.debug-empty {
+    text-align: center;
+    padding: var(--space-lg) var(--space-sm);
+    color: var(--text-muted);
+}
+
+.debug-layer-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-xs);
+    font-size: 0.78rem;
+}
+
+.debug-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 2px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.debug-row:last-child {
+    border-bottom: none;
+}
+
+.debug-label {
+    color: var(--text-muted);
+}
+
+.debug-value {
+    color: var(--accent-teal);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+}
+
+.debug-section {
+    margin-top: var(--space-sm);
+    padding-top: var(--space-sm);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.debug-section-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-xs);
+    font-size: 0.72rem;
+}
+
+.debug-effect {
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+    padding: var(--space-xs) var(--space-sm);
+    margin-bottom: var(--space-xs);
+}
+
+.debug-effect-name {
+    font-weight: 600;
+    color: var(--accent-purple);
+    font-size: 0.68rem;
+}
+
+.debug-effect-param {
+    color: var(--text-muted);
+    font-size: 0.64rem;
+}
+
+/* ─── Layer Properties Panel ──────────────────────────────────────────────── */
+
+.layer-props-panel {
+    position: fixed;
+    top: var(--header-h);
+    right: 0;
+    bottom: var(--nav-h);
+    width: min(320px, 85vw);
+    z-index: 90;
+    background: var(--bg-surface);
+    border-left: 1px solid var(--border-subtle);
+    transform: translateX(100%);
+    transition: transform var(--transition-base);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.layer-props-panel.open {
+    transform: translateX(0);
+}
+
+.layer-props-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+    border-bottom: 1px solid var(--border-subtle);
+    flex: none;
+}
+
+.layer-props-header h3 {
+    flex: 1;
+    font-size: 0.88rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.layer-props-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.layer-props-empty {
+    text-align: center;
+    padding: var(--space-xl) var(--space-md);
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+
+.layer-props-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.layer-props-field label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.layer-props-field input[type="range"] {
+    width: 100%;
+}
+
+.layer-props-field .range-value {
+    font-size: 0.72rem;
+    color: var(--accent-teal);
+    font-family: var(--font-mono);
+}
+
+.layer-props-color {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.layer-props-color input[type="color"] {
+    width: 40px;
+    height: 32px;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    background: none;
+}
+
+.layer-props-color input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.layer-props-color input[type="color"]::-webkit-color-swatch {
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+}
+
+.layer-props-actions {
+    display: flex;
+    gap: var(--space-sm);
+    margin-top: auto;
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.layer-props-actions .btn {
+    flex: 1;
+}
+
 /* ─── Mobile bottom sheet style ────────────────────────────────────────────── */
 
 @media (max-width: 640px) {

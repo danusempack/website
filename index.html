@@ -72,6 +72,18 @@
                 <div class="busy-detail" id="busyDetail"></div>
                 <button class="btn sm" id="busyDismiss" hidden>Tutup</button>
             </div>
+            <!-- Debug Inspector -->
+            <div class="debug-panel" id="debugPanel" hidden>
+                <div class="debug-header">
+                    <span>🔍 Inspector</span>
+                    <button class="icon-btn sm" id="btnCloseDebug" title="Tutup">
+                        <svg class="i sm"><use href="#i-x"/></svg>
+                    </button>
+                </div>
+                <div class="debug-content" id="debugContent">
+                    <div class="debug-empty">Klik layer di canvas untuk inspect</div>
+                </div>
+            </div>
         </div>
 
         <!-- Transport -->
@@ -305,6 +317,19 @@
                 </section>
             </div>
         </aside>
+    </div>
+
+    <!-- Layer Properties Panel -->
+    <div class="layer-props-panel" id="layerPropsPanel">
+        <div class="layer-props-header">
+            <h3 id="layerPropsTitle">Layer Properties</h3>
+            <button class="icon-btn" id="btnCloseLayerProps" title="Tutup">
+                <svg class="i"><use href="#i-x"/></svg>
+            </button>
+        </div>
+        <div class="layer-props-body" id="layerPropsBody">
+            <div class="layer-props-empty">Pilih layer untuk edit properties</div>
+        </div>
     </div>
 
     <!-- Settings Dialog -->
