@@ -121,49 +121,83 @@ const Panels = {
         try {
             this.showStatus('amStatus', 'Mengambil dari Alight Motion...');
 
-            // Try multiple CORS proxies with fallback
-            const proxies = [
-                (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-                (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
-                (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-                (u) => `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(u)}`,
-                (u) => `https://cors-anywhere.herokuapp.com/${encodeURIComponent(u)}`,
-                (u) => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+            // Try multiple CORS proxies in parallel with timeout
+            const proxyUrls = [
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+                `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+                `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`,
+                `https://corsproxy.org/?url=${encodeURIComponent(url)}`,
+                `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
             ];
 
-            let html = null;
-            let lastError = null;
+            // Fetch with timeout
+            const fetchWithTimeout = (fetchPromise, ms) => {
+                return Promise.race([
+                    fetchPromise,
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+                ]);
+            };
 
-            for (const proxyFn of proxies) {
-                try {
-                    const proxyUrl = proxyFn(url);
-                    const response = await fetch(proxyUrl);
-                    if (response.ok) {
-                        const text = await response.text();
-                        // allorigins /get/ returns JSON with contents
-                        if (text.startsWith('{') && text.includes('contents')) {
-                            try {
-                                const data = JSON.parse(text);
-                                if (data.contents && data.contents.length > 100) {
-                                    html = data.contents;
-                                    break;
-                                }
-                            } catch (e) {
-                                // Not JSON, continue
+            // Try all proxies in parallel
+            const promises = proxyUrls.map(proxyUrl =>
+                fetchWithTimeout(fetch(proxyUrl), 10000)
+                    .then(r => r.ok ? r.text() : null)
+                    .catch(() => null)
+            );
+
+            const results = await Promise.all(promises);
+
+            // Find first valid result
+            let html = null;
+            for (const text of results) {
+                if (text && text.length > 100) {
+                    if (text.startsWith('{') && text.includes('contents')) {
+                        try {
+                            const data = JSON.parse(text);
+                            if (data.contents && data.contents.length > 100) {
+                                html = data.contents;
+                                break;
                             }
-                        } else if (text.length > 100) {
-                            html = text;
-                            break;
-                        }
+                        } catch (e) { /* Not JSON */ }
+                    } else if (!text.startsWith('<html') && !text.includes('<!DOCTYPE html>')) {
+                        html = text;
+                        break;
+                    } else if (text.length > 500) {
+                        // Might be HTML from Alight Creative
+                        html = text;
+                        break;
                     }
-                } catch (e) {
-                    lastError = e;
-                    continue;
                 }
             }
 
             if (!html) {
-                throw new Error(lastError?.message || 'Semua CORS proxy gagal');
+                // Try sequential fallback with more proxies
+                const moreProxies = [
+                    `https://cors.bridged.cc/${encodeURIComponent(url)}`,
+                    `https://proxy.cors.sh/${encodeURIComponent(url)}`,
+                    `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+                    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+                ];
+
+                for (const proxyUrl of moreProxies) {
+                    try {
+                        const response = await fetchWithTimeout(fetch(proxyUrl), 8000);
+                        if (response.ok) {
+                            const text = await response.text();
+                            if (text && text.length > 100) {
+                                html = text;
+                                break;
+                            }
+                        }
+                    } catch (e) {
+                        continue;
+                    }
+                }
+            }
+
+            if (!html) {
+                throw new Error('Semua proxy gagal. Upload XML langsung.');
             }
 
             // Try to extract preset data from HTML
@@ -174,78 +208,85 @@ const Panels = {
                 this.setProject(project);
                 App.setProject(project);
                 this.showStatus('amStatus', `Berhasil: ${project.name} (${project.layers.length} layers)`, 'success');
-            } else {
-                // Try to find Firebase Storage data URL
-                const fbMatch = html.match(/https?:\/\/firebasestorage\.googleapis\.com[^"'\s]+/i);
-                if (fbMatch) {
-                    const fbUrl = fbMatch[0].replace(/\\u0026/g, '&').replace(/\\u003d/g, '=');
-                    // Try to fetch Firebase data through proxies
-                    for (const proxyFn of proxies) {
+                return;
+            }
+
+            // Try to find Firebase Storage data URL
+            const fbMatch = html.match(/https?:\/\/firebasestorage\.googleapis\.com[^"'\s]+/i);
+            if (fbMatch) {
+                const fbUrl = fbMatch[0].replace(/\\u0026/g, '&').replace(/\\u003d/g, '=');
+
+                // Try to fetch Firebase data through proxies
+                const fbProxyUrls = [
+                    `https://api.allorigins.win/raw?url=${encodeURIComponent(fbUrl)}`,
+                    `https://corsproxy.io/?url=${encodeURIComponent(fbUrl)}`,
+                    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(fbUrl)}`,
+                ];
+
+                const fbPromises = fbProxyUrls.map(proxyUrl =>
+                    fetchWithTimeout(fetch(proxyUrl), 10000)
+                        .then(r => r.ok ? r.text() : null)
+                        .catch(() => null)
+                );
+
+                const fbResults = await Promise.all(fbPromises);
+
+                for (const fbText of fbResults) {
+                    if (fbText && !fbText.startsWith('<') && fbText.length > 50) {
                         try {
-                            const fbResponse = await fetch(proxyFn(fbUrl));
-                            if (fbResponse.ok) {
-                                const fbText = await fbResponse.text();
-                                if (fbText && !fbText.startsWith('<')) {
-                                    try {
-                                        const parsed = JSON.parse(fbText);
-                                        const project = this.buildPresetFromData(parsed, url);
-                                        this.setProject(project);
-                                        App.setProject(project);
-                                        this.showStatus('amStatus', `Berhasil: ${project.name} (${project.layers.length} layers)`, 'success');
-                                        return;
-                                    } catch (e) {
-                                        // Not JSON, continue
-                                    }
-                                }
-                            }
-                        } catch (e) {
-                            continue;
-                        }
+                            const parsed = JSON.parse(fbText);
+                            const project = this.buildPresetFromData(parsed, url);
+                            this.setProject(project);
+                            App.setProject(project);
+                            this.showStatus('amStatus', `Berhasil: ${project.name} (${project.layers.length} layers)`, 'success');
+                            return;
+                        } catch (e) { /* Not JSON */ }
                     }
                 }
-
-                // Last resort: create basic preset
-                const project = {
-                    name: 'Alight Preset',
-                    aspectRatio: '9:16',
-                    fps: 30,
-                    duration: 5,
-                    width: 540,
-                    height: 960,
-                    backgroundColor: '#1a1a2e',
-                    layers: [{
-                        id: 'bg',
-                        type: 'shape',
-                        name: 'Background',
-                        visible: true,
-                        locked: false,
-                        blendMode: 'normal',
-                        opacity: 1,
-                        transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, opacity: 1, anchorX: 0.5, anchorY: 0.5 },
-                        tracks: {},
-                        effects: [],
-                        startTime: 0,
-                        duration: 5,
-                        shapeData: {
-                            shapeType: 'rectangle',
-                            fill: '#1a1a2e',
-                            fillEnabled: true,
-                            stroke: '#000000',
-                            strokeWidth: 0,
-                            strokeEnabled: false,
-                            width: 540,
-                            height: 960
-                        }
-                    }],
-                    mediaSlots: [],
-                    source: url
-                };
-                this.setProject(project);
-                App.setProject(project);
-                this.showStatus('amStatus', 'Preset dasar dimuat. Upload XML untuk data lengkap.', 'warn');
             }
+
+            // Last resort: create basic preset
+            const project = {
+                name: 'Alight Preset',
+                aspectRatio: '9:16',
+                fps: 30,
+                duration: 5,
+                width: 540,
+                height: 960,
+                backgroundColor: '#1a1a2e',
+                layers: [{
+                    id: 'bg',
+                    type: 'shape',
+                    name: 'Background',
+                    visible: true,
+                    locked: false,
+                    blendMode: 'normal',
+                    opacity: 1,
+                    transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, opacity: 1, anchorX: 0.5, anchorY: 0.5 },
+                    tracks: {},
+                    effects: [],
+                    startTime: 0,
+                    duration: 5,
+                    shapeData: {
+                        shapeType: 'rectangle',
+                        fill: '#1a1a2e',
+                        fillEnabled: true,
+                        stroke: '#000000',
+                        strokeWidth: 0,
+                        strokeEnabled: false,
+                        width: 540,
+                        height: 960
+                    }
+                }],
+                mediaSlots: [],
+                source: url
+            };
+            this.setProject(project);
+            App.setProject(project);
+            this.showStatus('amStatus', 'Preset dasar dimuat. Upload XML untuk data lengkap.', 'warn');
+
         } catch (e) {
-            this.showStatus('amStatus', `Error: ${e.message}. Coba upload file XML langsung.`, 'error');
+            this.showStatus('amStatus', `Error: ${e.message}`, 'error');
         }
     },
 
