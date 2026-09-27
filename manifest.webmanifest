@@ -1,0 +1,22 @@
+{
+  "name": "AM Preset Studio",
+  "short_name": "AM Studio",
+  "description": "Pemutar dan editor preset Alight Motion (.xml) sepenuhnya di browser. Tanpa server, tanpa unggah.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#101219",
+  "theme_color": "#5b4bdb",
+  "lang": "id",
+  "dir": "ltr",
+  "categories": ["video", "photo", "productivity", "utilities"],
+  "icons": [
+    { "src": "assets/img/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "assets/img/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Buka preset", "url": "./?tab=proyek" },
+    { "name": "Ekspor video", "url": "./?tab=ekspor" }
+  ]
+}

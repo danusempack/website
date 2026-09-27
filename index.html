@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+<meta charset="utf-8">
+<!-- Content-Security-Policy. Everything this app needs is same-origin, so the
+     default is 'none' and every capability is granted explicitly.
+       * No 'unsafe-inline' for script or style. The markup carries no inline
+         script tag, no inline event handler, no style block and no style
+         attribute; the app never calls setAttribute('style') or cssText
+         either, so CSSOM writes keep working under style-src 'self'.
+       * blob: is needed for img-src/media-src only (thumbnails, video, audio
+         and the recorded export). The XML worker is same-origin, so worker-src
+         stays 'self'.
+       * frame-ancestors is intentionally absent: it is ignored in a meta CSP,
+         and GitHub Pages cannot send headers, so it is documented in README.md
+         instead of shipping a directive the browser would warn about. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; form-action 'none'; frame-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'">
+<!-- Zoom is intentionally NOT disabled (WCAG 1.4.4). viewport-fit=cover for
+     notches; safe-area insets are applied in CSS. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#5b4bdb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101219" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="AM Preset Studio — pemutar dan editor preset Alight Motion (.xml) sepenuhnya di browser. WebGL2, tanpa server, tanpa unggah.">
+<title>AM Preset Studio</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/img/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+
+<!-- ============================ Icon sprite ============================ -->
+<svg class="sprite-defs" width="0" height="0" aria-hidden="true" focusable="false"><defs>
+  <symbol id="i-play" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1.2"/><rect x="14" y="4" width="4" height="16" rx="1.2"/></symbol>
+  <symbol id="i-rew" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.5 15a9 9 0 1 0 2-9.5L1 10"/></symbol>
+  <symbol id="i-loop" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></symbol>
+  <symbol id="i-tune" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><polyline points="14 3 14 8 19 8"/></symbol>
+  <symbol id="i-img" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="M21 15l-4.5-4.5L5 21"/></symbol>
+  <symbol id="i-music" viewBox="0 0 24 24"><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/><path d="M9 18V5l12-2v13"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="4" rx="1.2"/><rect x="3" y="10" width="12" height="4" rx="1.2"/><rect x="3" y="17" width="15" height="4" rx="1.2"/></symbol>
+  <symbol id="i-film" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2.5"/><line x1="7" y1="3" x2="7" y2="21"/><line x1="17" y1="3" x2="17" y2="21"/><line x1="2" y1="8" x2="7" y2="8"/><line x1="2" y1="16" x2="7" y2="16"/><line x1="17" y1="8" x2="22" y2="8"/><line x1="17" y1="16" x2="22" y2="16"/></symbol>
+  <symbol id="i-dl" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.07 0l2-2a5 5 0 0 0-7.07-7.07l-1 1"/><path d="M14 11a5 5 0 0 0-7.07 0l-2 2a5 5 0 0 0 7.07 7.07l1-1"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-eyeoff" viewBox="0 0 24 24"><path d="M17.9 17.9A10.9 10.9 0 0 1 12 19c-6.5 0-10.5-7-10.5-7a21 21 0 0 1 5-5.9M9.9 4.2A10.9 10.9 0 0 1 12 4c6.5 0 10.5 7 10.5 7a21 21 0 0 1-2.1 3.1M14.1 14.1a3 3 0 1 1-4.2-4.2"/><line x1="2" y1="2" x2="22" y2="22"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M16 21h3a2 2 0 0 0 2-2v-3M8 21H5a2 2 0 0 1-2-2v-3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><polyline points="9 5 16 12 9 19"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 22V3"/><path d="M4 4h13l-2.5 4L17 12H4"/></symbol>
+  <symbol id="i-fit" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h12M9 9l-3 3 3 3M15 9l3 3-3 3"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 13.2A9 9 0 1 1 10.8 3a7.2 7.2 0 0 0 10.2 10.2z"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18.2A2 2 0 0 0 3.5 21h17a2 2 0 0 0 1.7-2.8L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13.5"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+</defs></svg>
+
+<!-- ============================ No-JS fallback ============================ -->
+<noscript>
+  <div id="nojs">
+    <div>
+      <h1>AM Preset Studio butuh JavaScript</h1>
+      <p>Halaman ini memuat dan memutar preset Alight Motion sepenuhnya di dalam
+         browser Anda — semua pekerjaan (baca XML, render WebGL, ekspor video)
+         terjadi di perangkat Anda. Tanpa JavaScript tidak ada yang bisa
+         ditampilkan.</p>
+      <p><a href="https://github.com/danusempack/website">Buka di GitHub</a></p>
+    </div>
+  </div>
+</noscript>
+
+<div id="app" hidden>
+
+  <!-- ============================ Header ============================ -->
+  <header id="top">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></svg></div>
+      <div class="brand-txt">
+        <h1>AM Preset Studio</h1>
+        <div class="brand-sub" id="subtitle" role="status" aria-live="polite">Menyiapkan…</div>
+      </div>
+    </div>
+    <div class="top-act">
+      <button id="btnOpen" class="btn quiet" type="button" title="Buka file preset .xml">
+        <svg class="ico" aria-hidden="true"><use href="#i-doc"/></svg>
+        <span class="hide-sm">Buka XML</span>
+      </button>
+      <button id="btnTheme" class="btn quiet icon" type="button" aria-label="Ganti tema terang/gelap" title="Tema terang / gelap">
+        <svg class="ico" aria-hidden="true"><use href="#i-moon"/></svg>
+      </button>
+      <button id="btnSettings" class="btn quiet icon" type="button" aria-label="Pengaturan" title="Pengaturan">
+        <svg class="ico" aria-hidden="true"><use href="#i-tune"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ============================ Stage ============================ -->
+  <div id="stage" role="img" aria-label="Pratinjau hasil render preset" aria-describedby="stageAlt">
+    <canvas id="view" width="270" height="480"></canvas>
+    <p id="stageAlt" class="sr">Pratinjau video preset. Gunakan tombol Putar untuk memutar.</p>
+
+    <div class="stage-hint" aria-hidden="true"><i><svg class="ico fill" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></svg></i></div>
+
+    <button id="stageBtnSize" class="stage-tool" type="button" aria-label="Perbesar atau perkecil pratinjau" title="Perbesar / perkecil pratinjau">
+      <svg class="ico sm" aria-hidden="true"><use href="#i-expand"/></svg>
+    </button>
+
+    <div id="dropveil" aria-hidden="true">Lepas file di sini<br><small>.xml, foto, video, atau audio</small></div>
+
+    <div id="inspector" hidden aria-label="Inspector render">
+      <h3>Inspector Render <button id="inspClose" type="button" aria-label="Tutup inspector">✕</button></h3>
+      <div id="inspBody"><div class="ins-empty">Ketuk satu layer untuk melihat rantai efek &amp; matriks transformasinya.</div></div>
+    </div>
+
+    <div id="stagebusy" hidden role="status" aria-live="assertive">
+      <div class="spinner" aria-hidden="true"></div>
+      <div class="busy-title" id="busyTitle">Memuat…</div>
+      <div class="busy-note" id="busyNote"></div>
+      <button id="busyClose" class="btn sm" type="button" hidden>Tutup</button>
+    </div>
+  </div>
+
+  <!-- ============================ Transport ============================ -->
+  <div id="transport">
+    <div class="rangerow">
+      <input type="range" id="seek" min="0" max="1000" value="0" step="1" aria-label="Posisi pemutaran (milidetik)">
+      <button id="seekReset" class="range-reset" type="button" aria-label="Kembali ke awal" title="Kembali ke 0">
+        <svg class="ico sm" aria-hidden="true"><use href="#i-rew"/></svg>
+      </button>
+    </div>
+    <div class="ctl-row">
+      <button id="btnRew" class="btn icon" type="button" aria-label="Kembali ke awal" title="Kembali ke awal">
+        <svg class="ico" aria-hidden="true"><use href="#i-rew"/></svg>
+      </button>
+      <button id="btnPlay" class="btn primary" type="button">
+        <svg class="ico sm" aria-hidden="true"><use href="#i-play"/></svg><span id="playLabel">Putar</span>
+      </button>
+      <button id="btnLoop" class="btn on" type="button" aria-pressed="true" title="Ulangi otomatis">
+        <svg class="ico sm" aria-hidden="true"><use href="#i-loop"/></svg><span class="hide-sm">Loop</span>
+      </button>
+      <span class="clock" id="clock">0.00s / 0.00s</span>
+    </div>
+  </div>
+
+  <!-- Desktop: JS moves the Layer pane here -->
+  <div id="dock"></div>
+
+  <!-- ============================ Sidebar ============================ -->
+  <aside id="sidebar">
+    <nav id="tabbar" role="tablist" aria-label="Panel utama">
+      <button type="button" class="tabbtn" role="tab" id="tb-proyek"  aria-controls="pane-proyek"  aria-selected="true"  data-tab="proyek"><svg class="ico" aria-hidden="true"><use href="#i-doc"/></svg><span>Proyek</span></button>
+      <button type="button" class="tabbtn" role="tab" id="tb-media"   aria-controls="pane-media"   aria-selected="false" data-tab="media" tabindex="-1"><svg class="ico" aria-hidden="true"><use href="#i-img"/></svg><span>Media</span></button>
+      <button type="button" class="tabbtn" role="tab" id="tb-audio"   aria-controls="pane-audio"   aria-selected="false" data-tab="audio" tabindex="-1"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg><span>Audio</span></button>
+      <button type="button" class="tabbtn" role="tab" id="tb-layer"   aria-controls="pane-layer"   aria-selected="false" data-tab="layer" tabindex="-1"><svg class="ico" aria-hidden="true"><use href="#i-layers"/></svg><span>Layer</span></button>
+      <button type="button" class="tabbtn" role="tab" id="tb-ekspor"  aria-controls="pane-ekspor"  aria-selected="false" data-tab="ekspor" tabindex="-1"><svg class="ico" aria-hidden="true"><use href="#i-film"/></svg><span>Ekspor</span></button>
+    </nav>
+
+    <div id="panes">
+
+      <!-- ── Proyek ── -->
+      <section id="pane-proyek" class="pane" role="tabpanel" aria-labelledby="tb-proyek" tabindex="0" data-active>
+        <div class="card">
+          <div class="card-head"><svg class="ico" aria-hidden="true"><use href="#i-doc"/></svg><h2>Preset .xml</h2></div>
+          <label class="dropzone">
+            <svg class="ico" aria-hidden="true"><use href="#i-up"/></svg>
+            <strong id="xmlPickLabel">Pilih file .xml</strong>
+            <small>Bisa 2 file sekaligus (preset + grup/cc). File juga bisa langsung diseret ke area panggung.</small>
+            <input type="file" id="inXml" accept=".xml,text/xml,application/xml" multiple hidden>
+          </label>
+          <label class="field" id="multiPickRow" hidden>Preset yang akan diputar
+            <select id="multiPick"></select>
+          </label>
+          <div class="statusbox" id="xmlState" role="status" aria-live="polite">pilih file .xml untuk mulai</div>
+          <div class="grid2">
+            <button id="btnDemo" class="btn sm" type="button">Buka preset demo</button>
+            <button id="btnReset" class="btn sm" type="button">Hapus preset aktif</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><svg class="ico" aria-hidden="true"><use href="#i-doc"/></svg><h2>Preset tersimpan</h2><span class="tail" id="recentCount"></span></div>
+          <div class="stack" id="recentList"></div>
+          <p class="hint">Preset disimpan di IndexedDB perangkat ini (bukan di server). Media ikut disimpan sebagai blob lokal.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><svg class="ico" aria-hidden="true"><use href="#i-warn"/></svg><h2>Cara kerja &amp; batasan</h2></div>
+          <ul class="hint hint-stack">
+            <li>• <b>100% lokal.</b> Tidak ada server: file .xml dan media tidak pernah meninggalkan perangkat Anda.</li>
+            <li>• <b>Tidak ada eksekusi kode.</b> Berbeda dengan pembaca preset yang memakai <code>new Function</code> untuk skrip efek, studio ini tidak pernah menjalankan JS dari dalam file preset.</li>
+            <li>• <b>Transformasi akurat.</b> Posisi, skala, rotasi, opacity, blend mode, dan keyframe mengikuti formula Alight Motion.</li>
+            <li>• <b>Efek best-effort.</b> Hanya efek yang ada di registri lokal (<span id="fxKnown" class="mono">—</span> efek) yang dirender. Sisanya ditandai jelas di panel Layer, bukan diam-diam dilewati.</li>
+            <li>• <b>Batas ukuran.</b> Maksimal 32&nbsp;MB per file .xml, diparse di Web Worker agar UI tidak beku.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ── Media ── -->
+      <section id="pane-media" class="pane" role="tabpanel" aria-labelledby="tb-media" tabindex="0" hidden>
+        <div class="card">
+          <div class="card-head"><svg class="ico" aria-hidden="true"><use href="#i-img"/></svg><h2>Slot media preset</h2><span class="tail" id="slotCount"></span></div>
+          <p class="hint">Setiap slot punya tombol <b>Ganti media</b> — ketuk, lalu pilih dari galeri di bawah. Slot yang belum terisi akan memakai placeholder.</p>
+          <div class="stack" id="slotList"><div class="empty">Belum ada preset dimuat.</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><svg class="ico" aria-hidden="true"><use href="#i-layers"/></svg><h2>Galeri media</h2><span class="tail" id="galleryCount"></span></div>
+          <label class="btn primary block">
+            <svg class="ico sm" aria-hidden="true"><use href="#i-plus"/></svg>
+            <span>Tambah foto, video, atau audio</span>
+            <input type="file" id="inMedia" accept="image/*,video/*,audio/*" multiple hidden>
+          </label>
+          <p class="hint">Media baru ditambahkan, tidak menimpa yang lama. Berkas disimpan lokal di IndexedDB. Audio otomatis masuk ke tab Audio.</p>
+          <div class="gallery" id="gallery"><div class="empty">Belum ada media.</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><svg class="ico" aria-hidden="true"><use href="#i-expand"/></svg><h2>Tampilan</h2></div>
+          <label class="field">
+            <span class="labelrow"><span>Skala foto</span><span class="val" id="photoScaleVal">1.00x</span></span>
+            <span class="rangerow">
+              <input type="range" id="photoScale" min="0.5" max="2.5" step="0.05" value="1">
+              <button class="range-reset" type="button" data-reset="photoScale" data-default="1" aria-label="Reset skala foto" title="Kembali ke 1.00x"><svg class="ico sm" aria-hidden="true"><use href="#i-rew"/></svg></button>
+            </span>
+          </label>
+          <label class="field">Ukuran kotak layer
+            <select id="boxScale">
+              <option value="auto" selected>Auto (bawaan AM)</option>
+              <option value="1">1x — sama seperti file</option>
+              <option value="2">2x — sama seperti file</option>
+            </select>
+          </label>
+          <p class="hint">AM mengalikan ukuran kotak layer dengan 2 saat render. Kalau efek tile/mirror terlihat penuh, pilih “1x”.</p>
+        </div>
+      </section>
+
+      <!-- ── Audio ── -->
+      <section id="pane-audio" class="pane" role="tabpanel" aria-labelledby="tb-audio" tabindex="0" hidden>
+        <div class="card">
+          <div class="card-head"><svg class="ico" aria-hidden="true"><use href="#i-music"/></svg><h2>Track audio scene</h2></div>
+          <p class="hint">Pilih berkas audio untuk slot track, atau tambahkan yang baru.</p>
+          <div class="stack" id="trackList"><div class="empty">Preset ini tidak punya track audio.</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><svg class="ico" aria-hidden="true"><use href="#i-tune"/></svg><h2>Sinkronisasi</h2></div>
+          <div class="stack">
+            <div class="statusbox" id="audioState" role="status" aria-live="polite">audio: —</div>
+            <div class="statusbox" id="syncState" role="status" aria-live="polite">sinkronisasi: —</div>
+          </div>
+          <button id="btnFitRate" class="btn sm" type="button">Samakan durasi audio ke project</button>
+          <label class="field">
+            <span class="labelrow"><span>Kecepatan audio</span><span class="val" id="rateVal">1.000x</span></span>
+            <span class="rangerow">
+              <input type="range" id="audioRate" min="0.5" max="1.5" step="0.001" value="1">
+              <button class="range-reset" type="button" data-reset="audioRate" data-default="1" aria-label="Reset kecepatan audio" title="Kembali ke 1.000x"><svg class="ico sm" aria-hidden="true"><use href="#i-rew"/></svg></button>
+            </span>
+          </label>
+          <label class="check"><input type="checkbox" id="keepPitch" checked><span>Jaga pitch</span></label>
+          <label class="field">
+            <span class="labelrow"><span>Geser video terhadap audio</span><span class="val" id="offsetVal">0 ms</span></span>
+            <span class="rangerow">
+              <input type="range" id="audioOffset" min="-5000" max="5000" step="5" value="0">
+              <button class="range-reset" type="button" data-reset="audioOffset" data-default="0" aria-label="Reset offset audio" title="Kembali ke 0 ms"><svg class="ico sm" aria-hidden="true"><use href="#i-rew"/></svg></button>
+            </span>
+          </label>
+          <label class="check"><input type="checkbox" id="unmuteVideo"><span>Putar suara dari layer video<small>Nonaktif = layer video dibisukan</small></span></label>
+        </div>
+      </section>
+
+      <!-- ── Layer (dipindah ke dock di desktop) ── -->
+      <section id="pane-layer" class="pane" role="tabpanel" aria-labelledby="tb-layer" tabindex="0" hidden>
+        <div class="tl-bar">
+          <h2>Layer</h2><span class="tl-count" id="layerCount"></span>
+          <button id="tlExpandAll" class="btn sm" type="button" hidden>Buka semua grup</button>
+          <button id="tlMark" class="btn sm" type="button" title="Pasang / buang penanda waktu (B)">
+            <svg class="ico sm" aria-hidden="true"><use href="#i-flag"/></svg>Penanda
+          </button>
+          <button id="tlMarkPrev" class="btn sm icon" type="button" aria-label="Penanda sebelumnya" title="Penanda sebelumnya">
+            <svg class="ico sm" aria-hidden="true"><use href="#i-chev"/></svg>
+          </button>
+          <button id="tlMarkNext" class="btn sm icon" type="button" aria-label="Penanda berikutnya" title="Penanda berikutnya (B)">
+            <svg class="ico sm flip" aria-hidden="true"><use href="#i-chev"/></svg>
+          </button>
+          <div class="tl-zoom">
+            <button id="tlNow" class="btn sm icon" type="button" aria-label="Gulir ke posisi sekarang" title="Gulir ke posisi sekarang">
+              <svg class="ico sm" aria-hidden="true"><use href="#i-fit"/></svg>
+            </button>
+            <button id="tlZoomOut" class="btn sm icon" type="button" aria-label="Perkecil timeline">
+              <svg class="ico sm" aria-hidden="true"><use href="#i-minus"/></svg>
+            </button>
+            <input type="range" id="tlZoom" min="0.2" max="24" step="0.1" value="3" aria-label="Zoom timeline">
+            <button id="tlZoomIn" class="btn sm icon" type="button" aria-label="Perbesar timeline">
+              <svg class="ico sm" aria-hidden="true"><use href="#i-plus"/></svg>
+            </button>
+            <span class="val" id="tlZoomVal">3.0x</span>
+            <button id="tlFit" class="btn sm" type="button">Muat layar</button>
+          </div>
+        </div>
+
+        <div class="tl-main">
+          <div id="scenetree">
+            <div class="st-head">
+              <span id="stCrumb">Proyek</span>
+              <button id="stUp" class="btn sm" type="button" hidden>↑ Naik</button>
+            </div>
+            <div id="stList"></div>
+          </div>
+
+          <div id="tlwrap">
+            <div id="tlbody">
+              <div id="tlinner">
+                <div id="tlruler">
+                  <div class="tl-corner">Layer</div>
+                  <canvas id="tlrulercanvas" width="10" height="28"></canvas>
+                  <div id="tlcap"></div>
+                </div>
+                <div id="tltracks"><div class="empty">Muat preset terlebih dahulu</div></div>
+                <div id="tlhead"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="layerinfo" class="card">
+            <div class="empty">Ketuk blok layer untuk melihat detail, daftar efek, dan pratinjau medianya.</div>
+          </div>
+        </div>
+
+        <div class="legend" aria-hidden="true">
+          <span><i class="swatch" data-kind="image"></i>Gambar</span>
+          <span><i class="swatch" data-kind="video"></i>Video</span>
+          <span><i class="swatch" data-kind="audio"></i>Audio</span>
+          <span><i class="swatch" data-kind="group"></i>Group</span>
+          <span><i class="swatch" data-kind="shape"></i>Shape</span>
+        </div>
+      </section>
+
+      <!-- ── Ekspor ── -->
+      <section id="pane-ekspor" class="pane" role="tabpanel" aria-labelledby="tb-ekspor" tabindex="0" hidden>
+        <div class="card">
+          <div class="card-head"><svg class="ico" aria-hidden="true"><use href="#i-film"/></svg><h2>Ekspor video</h2></div>
+
+          <div class="grid2">
+            <label class="field">Resolusi
+              <select id="expRes">
+                <optgroup label="Hemat">
+                  <option value="270">270p</option>
+                  <option value="360">360p</option>
+                  <option value="480">480p</option>
+                </optgroup>
+                <optgroup label="Umum">
+                  <option value="720" selected>720p (HD)</option>
+                  <option value="960">960p</option>
+                  <option value="1080">1080p (FHD)</option>
+                </optgroup>
+                <optgroup label="Berat — butuh GPU kuat">
+                  <option value="1440">1440p (2K)</option>
+                  <option value="2160">2160p (4K)</option>
+                </optgroup>
+                <option value="same">Sama dengan pratinjau</option>
+              </select>
+            </label>
+            <label class="field">FPS
+              <select id="expFps">
+                <option value="24">24</option>
+                <option value="30" selected>30</option>
+                <option value="60">60</option>
+                <option value="custom">Lainnya…</option>
+              </select>
+            </label>
+          </div>
+
+          <label class="field" id="expFpsRow" hidden>FPS ekspor (1–120)
+            <input type="number" id="expFpsNum" inputmode="numeric" min="1" max="120" step="1" value="45">
+          </label>
+
+          <div class="grid2">
+            <label class="field">
+              <span class="labelrow"><span>Kualitas</span><span class="val" id="brateVal">Sedang</span></span>
+              <span class="rangerow">
+                <input type="range" id="expBrate" min="0.035" max="2" step="0.001" value="0.08">
+                <button class="range-reset" type="button" data-reset="expBrate" data-default="0.08" aria-label="Reset kualitas" title="Kembali ke Sedang"><svg class="ico sm" aria-hidden="true"><use href="#i-rew"/></svg></button>
+              </span>
+            </label>
+            <label class="field">Audio ekspor
+              <select id="expSr">
+                <option value="auto" selected>Auto (paling kompatibel)</option>
+                <option value="48000">AAC 48 kHz</option>
+                <option value="44100">AAC 44.1 kHz</option>
+                <option value="32000">AAC 32 kHz</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="grid2">
+            <button id="btnExport" class="btn primary" type="button">
+              <svg class="ico sm" aria-hidden="true"><use href="#i-film"/></svg>Mulai ekspor
+            </button>
+            <button id="btnExportStop" class="btn" type="button" disabled>
+              <svg class="ico sm" aria-hidden="true"><use href="#i-x"/></svg>Batal
+            </button>
+          </div>
+
+          <progress id="expBar" value="0" max="1" aria-label="Progres ekspor"></progress>
+          <div class="statusbox" id="expState" role="status" aria-live="polite">siap</div>
+          <div class="expout" id="expOut"></div>
+        </div>
+      </section>
+
+    </div>
+  </aside>
+</div>
+
+<!-- ============================ Dialogs ============================ -->
+<dialog id="dlgSettings" aria-labelledby="dlgSettingsT">
+  <div class="dlg-head">
+    <svg class="ico" aria-hidden="true"><use href="#i-tune"/></svg>
+    <h2 id="dlgSettingsT">Pengaturan</h2>
+    <button class="btn quiet icon" type="button" data-close aria-label="Tutup pengaturan">
+      <svg class="ico" aria-hidden="true"><use href="#i-x"/></svg>
+    </button>
+  </div>
+  <div class="dlg-body">
+    <div class="card">
+      <div class="card-head"><h2>Kualitas pratinjau</h2></div>
+      <label class="field">Resolusi render
+        <select id="setQuality">
+          <option value="270">270p — paling cepat</option>
+          <option value="360" selected>360p — bawaan</option>
+          <option value="480">480p</option>
+          <option value="640">640p</option>
+          <option value="960">960p — berat</option>
+        </select>
+      </label>
+      <div class="statusbox" id="setResInfo">—</div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Performa</h2></div>
+      <label class="field">Target FPS
+        <select id="setFps">
+          <option value="60">60 — paling mulus</option>
+          <option value="30" selected>30 — hemat</option>
+          <option value="24">24</option>
+          <option value="15">15 — paling ringan</option>
+          <option value="custom">Lainnya…</option>
+        </select>
+      </label>
+      <label class="field" id="setFpsRow" hidden>FPS kustom (1–120)
+        <input type="number" id="setFpsNum" inputmode="numeric" min="1" max="120" step="1" value="45">
+      </label>
+      <label class="check"><input type="checkbox" id="setAutoQ" checked><span>Turunkan kualitas otomatis saat ngelag</span></label>
+      <label class="check"><input type="checkbox" id="setFx" checked><span>Jalankan efek</span></label>
+      <label class="check"><input type="checkbox" id="setDebug"><span>Mode debug rendering (inspector)</span></label>
+      <label class="check"><input type="checkbox" id="setKeepAwake"><span>Cegah layar mati saat render</span></label>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Pintasan papan tik</h2></div>
+      <p class="hint">Aktif di desktop, saat fokus tidak berada di kolom isian.</p>
+      <table class="li-table" id="shortcutTable"><tbody></tbody></table>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Info render</h2></div>
+      <div class="stack">
+        <div class="statusbox" id="setStatus">—</div>
+        <div class="statusbox" id="setPerf">—</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Log</h2><button id="btnClearLog" class="btn sm quiet" type="button">Bersihkan</button></div>
+      <div id="logbox" role="log" aria-live="off"></div>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="dlgLightbox" aria-labelledby="dlgLightT">
+  <div class="dlg-head">
+    <h2 id="dlgLightT">Pratinjau media</h2>
+    <button class="btn quiet icon" type="button" data-close aria-label="Tutup pratinjau">
+      <svg class="ico" aria-hidden="true"><use href="#i-x"/></svg>
+    </button>
+  </div>
+  <div class="dlg-body" id="lightboxBody"></div>
+</dialog>
+
+<dialog id="dlgPicker" aria-labelledby="dlgPickerT">
+  <div class="dlg-head">
+    <svg class="ico" aria-hidden="true"><use href="#i-img"/></svg>
+    <h2 id="dlgPickerT">Pilih media</h2>
+    <button class="btn quiet icon" type="button" data-close aria-label="Tutup pemilih media">
+      <svg class="ico" aria-hidden="true"><use href="#i-x"/></svg>
+    </button>
+  </div>
+  <div class="dlg-body">
+    <p class="hint">Ketuk media untuk memasangnya ke slot ini.</p>
+    <div class="gallery" id="pickerGrid"></div>
+  </div>
+</dialog>
+
+<dialog id="dlgLayerXml" aria-labelledby="dlgLayerXmlT">
+  <div class="dlg-head">
+    <svg class="ico" aria-hidden="true"><use href="#i-doc"/></svg>
+    <h2 id="dlgLayerXmlT">XML layer</h2>
+    <button class="btn quiet icon" type="button" data-close aria-label="Tutup XML layer">
+      <svg class="ico" aria-hidden="true"><use href="#i-x"/></svg>
+    </button>
+  </div>
+  <div class="dlg-body">
+    <p class="hint">Potongan XML asli layer ini dari file project — bukan rekonstruksi.</p>
+    <pre class="code" id="layerXmlBody" tabindex="0"></pre>
+  </div>
+</dialog>
+
+<!-- ============================ Toasts ============================ -->
+<div id="toasts" aria-live="polite" aria-atomic="false"></div>
+
+<script type="module" src="assets/js/main.js"></script>
+</body>
+</html>

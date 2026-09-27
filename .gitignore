@@ -1,0 +1,9 @@
+# The app itself has no dependencies and no build output, but keep these out
+# if anyone runs a tool in this tree.
+node_modules/
+.DS_Store
+Thumbs.db
+
+# Optional local test fixture: a real Alight Motion export is not ours to
+# commit. Set AM_REF_XML instead, or drop a file here (it stays untracked).
+test/fixtures/*.xml
