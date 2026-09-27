@@ -103,6 +103,9 @@
 
         <!-- Side Panel -->
         <aside id="sidePanel">
+            <button class="panel-close" id="btnClosePanel" title="Tutup panel">
+                <svg class="i sm"><use href="#i-x"/></svg>
+            </button>
             <nav id="tabNav" role="tablist">
                 <button class="tab-btn active" data-tab="project" role="tab">
                     <svg class="i"><use href="#i-file"/></svg>
@@ -337,6 +340,11 @@
             </label>
         </div>
     </dialog>
+
+    <!-- FAB (mobile) -->
+    <button class="fab" id="btnFab" title="Buka panel">
+        <svg viewBox="0 0 24 24"><polygon points="7 4 20 12 7 20 7 4"/></svg>
+    </button>
 
     <script src="js/utils/helpers.js"></script>
     <script src="js/engine/parser.js"></script>

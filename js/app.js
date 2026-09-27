@@ -52,6 +52,32 @@ const App = {
                 if (input) input.click();
             });
         }
+
+        // FAB (mobile) — toggle side panel
+        const btnFab = document.getElementById('btnFab');
+        const sidePanel = document.getElementById('sidePanel');
+        if (btnFab && sidePanel) {
+            btnFab.addEventListener('click', () => {
+                sidePanel.classList.toggle('open');
+            });
+        }
+
+        // Panel close button (mobile)
+        const btnClosePanel = document.getElementById('btnClosePanel');
+        if (btnClosePanel && sidePanel) {
+            btnClosePanel.addEventListener('click', () => {
+                sidePanel.classList.remove('open');
+            });
+        }
+
+        // Tab navigation — open panel on mobile
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (window.innerWidth < 900 && sidePanel) {
+                    sidePanel.classList.add('open');
+                }
+            });
+        });
     },
 
     initEngine() {
