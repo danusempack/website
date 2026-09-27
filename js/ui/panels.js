@@ -121,7 +121,25 @@ const Panels = {
         try {
             this.showStatus('amStatus', 'Mengambil dari Alight Motion...');
 
-            // Use our own proxy API
+            // Try direct fetch first (may fail due to CORS)
+            try {
+                const response = await fetch(url, { mode: 'cors' });
+                if (response.ok) {
+                    const text = await response.text();
+                    const data = this.extractDataFromHtml(text);
+                    if (data) {
+                        const project = this.buildPresetFromData(data, url);
+                        this.setProject(project);
+                        App.setProject(project);
+                        this.showStatus('amStatus', `Berhasil: ${project.name} (${project.layers.length} layers)`, 'success');
+                        return;
+                    }
+                }
+            } catch (e) {
+                // CORS failed, try proxy
+            }
+
+            // Try our proxy API
             const proxyUrl = `/api/alight-proxy?url=${encodeURIComponent(url)}`;
             const response = await fetch(proxyUrl);
 
@@ -142,6 +160,40 @@ const Panels = {
         } catch (e) {
             this.showStatus('amStatus', `Error: ${e.message}. Coba upload file XML langsung.`, 'error');
         }
+    },
+
+    extractDataFromHtml(html) {
+        const patterns = [
+            /window\.__INITIAL_STATE__\s*=\s*({.+?});/s,
+            /window\.__DATA__\s*=\s*({.+?});/s,
+            /<script[^>]*id="__NEXT_DATA__"[^>]*>({.+?})<\/script>/s,
+        ];
+        for (const pattern of patterns) {
+            const match = html.match(pattern);
+            if (match) {
+                try {
+                    return JSON.parse(match[1]);
+                } catch (e) {
+                    continue;
+                }
+            }
+        }
+        return null;
+    },
+
+    buildPresetFromData(data, url) {
+        return {
+            name: data.name || data.project?.name || 'Alight Preset',
+            aspectRatio: data.aspectRatio || '9:16',
+            fps: data.fps || 30,
+            duration: data.duration || 5,
+            width: 540,
+            height: 960,
+            backgroundColor: '#000000',
+            layers: data.layers || [],
+            mediaSlots: [],
+            source: url
+        };
     },
 
     async fetchFromDrive(url) {
