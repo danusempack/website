@@ -120,11 +120,27 @@ const Panels = {
 
         try {
             this.showStatus('amStatus', 'Mengambil dari Alight Motion...');
-            // In production, this would call a backend proxy
-            // For now, show a message
-            this.showStatus('amStatus', 'Fitur ini membutuhkan backend proxy. Silakan upload file XML langsung.', 'warn');
+
+            // Use our own proxy API
+            const proxyUrl = `/api/alight-proxy?url=${encodeURIComponent(url)}`;
+            const response = await fetch(proxyUrl);
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.success && data.preset) {
+                const project = data.preset;
+                this.setProject(project);
+                App.setProject(project);
+                this.showStatus('amStatus', `Berhasil: ${project.name} (${project.layers.length} layers)`, 'success');
+            } else {
+                throw new Error(data.error || 'Unknown error');
+            }
         } catch (e) {
-            this.showStatus('amStatus', `Error: ${e.message}`, 'error');
+            this.showStatus('amStatus', `Error: ${e.message}. Coba upload file XML langsung.`, 'error');
         }
     },
 
