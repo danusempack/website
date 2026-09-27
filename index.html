@@ -101,33 +101,35 @@
         <!-- Timeline Dock (Desktop) -->
         <div id="timelineDock"></div>
 
-        <!-- Side Panel -->
+        <!-- Tab Navigation (always visible) -->
+        <nav id="tabNav" role="tablist">
+            <button class="tab-btn active" data-tab="project" role="tab">
+                <svg class="i"><use href="#i-file"/></svg>
+                <span>Proyek</span>
+            </button>
+            <button class="tab-btn" data-tab="media" role="tab">
+                <svg class="i"><use href="#i-image"/></svg>
+                <span>Media</span>
+            </button>
+            <button class="tab-btn" data-tab="audio" role="tab">
+                <svg class="i"><use href="#i-music"/></svg>
+                <span>Audio</span>
+            </button>
+            <button class="tab-btn" data-tab="layers" role="tab">
+                <svg class="i"><use href="#i-layers"/></svg>
+                <span>Layer</span>
+            </button>
+            <button class="tab-btn" data-tab="export" role="tab">
+                <svg class="i"><use href="#i-film"/></svg>
+                <span>Ekspor</span>
+            </button>
+        </nav>
+
+        <!-- Side Panel (bottom sheet) -->
         <aside id="sidePanel">
             <button class="panel-close" id="btnClosePanel" title="Tutup panel">
                 <svg class="i sm"><use href="#i-x"/></svg>
             </button>
-            <nav id="tabNav" role="tablist">
-                <button class="tab-btn active" data-tab="project" role="tab">
-                    <svg class="i"><use href="#i-file"/></svg>
-                    <span>Proyek</span>
-                </button>
-                <button class="tab-btn" data-tab="media" role="tab">
-                    <svg class="i"><use href="#i-image"/></svg>
-                    <span>Media</span>
-                </button>
-                <button class="tab-btn" data-tab="audio" role="tab">
-                    <svg class="i"><use href="#i-music"/></svg>
-                    <span>Audio</span>
-                </button>
-                <button class="tab-btn" data-tab="layers" role="tab">
-                    <svg class="i"><use href="#i-layers"/></svg>
-                    <span>Layer</span>
-                </button>
-                <button class="tab-btn" data-tab="export" role="tab">
-                    <svg class="i"><use href="#i-film"/></svg>
-                    <span>Ekspor</span>
-                </button>
-            </nav>
 
             <div id="paneContainer">
                 <!-- Project Tab -->
@@ -340,11 +342,6 @@
             </label>
         </div>
     </dialog>
-
-    <!-- FAB (mobile) -->
-    <button class="fab" id="btnFab" title="Buka panel">
-        <svg viewBox="0 0 24 24"><polygon points="7 4 20 12 7 20 7 4"/></svg>
-    </button>
 
     <script src="js/utils/helpers.js"></script>
     <script src="js/engine/parser.js"></script>

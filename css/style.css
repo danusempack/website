@@ -582,14 +582,15 @@ input[type="range"]::-moz-range-thumb {
     background: white;
 }
 
-/* ─── Tab Navigation (AM Style — Bottom Bar) ───────────────────────────────── */
+/* ─── Tab Navigation (always visible bottom bar) ───────────────────────────── */
 
 #tabNav {
     grid-area: nav;
-    display: flex;
+    display: flex !important;
     background: var(--bg-surface);
     border-top: 1px solid var(--border-subtle);
     padding-bottom: var(--safe-bottom);
+    flex: none;
 }
 
 .tab-btn {
@@ -635,7 +636,7 @@ input[type="range"]::-moz-range-thumb {
     color: var(--accent-teal);
 }
 
-/* ─── Side Panel (AM Style — Bottom Sheet on Mobile) ───────────────────────── */
+/* ─── Side Panel (Bottom Sheet) ────────────────────────────────────────────── */
 
 #sidePanel {
     position: fixed;
@@ -664,7 +665,7 @@ input[type="range"]::-moz-range-thumb {
         right: 0;
         bottom: 0;
         width: 100%;
-        max-height: 70vh;
+        max-height: 75vh;
         border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
         transform: translateY(100%);
     }
@@ -674,7 +675,7 @@ input[type="range"]::-moz-range-thumb {
     }
 }
 
-/* Panel close button (mobile) */
+/* Panel close button */
 .panel-close {
     display: none;
     position: absolute;
@@ -693,45 +694,6 @@ input[type="range"]::-moz-range-thumb {
 
 @media (max-width: 899px) {
     .panel-close {
-        display: flex;
-    }
-}
-
-/* FAB — Floating Action Button (mobile) */
-.fab {
-    display: none;
-    position: fixed;
-    bottom: calc(var(--nav-h) + var(--space-lg));
-    right: var(--space-lg);
-    width: var(--fab-size);
-    height: var(--fab-size);
-    border-radius: 50%;
-    background: var(--accent-gradient);
-    color: white;
-    align-items: center;
-    justify-content: center;
-    box-shadow: var(--shadow-fab);
-    z-index: 90;
-    transition: all var(--transition-spring);
-}
-
-.fab:hover {
-    transform: scale(1.1);
-}
-
-.fab:active {
-    transform: scale(0.95);
-}
-
-.fab svg {
-    width: 24px;
-    height: 24px;
-    fill: white;
-    stroke: none;
-}
-
-@media (max-width: 899px) {
-    .fab {
         display: flex;
     }
 }
@@ -1633,32 +1595,6 @@ dialog::backdrop {
         #btnPlay {
             min-width: 70px;
         }
-    }
-}
-
-/* ─── Mobile Tab Nav (always visible) ──────────────────────────────────────── */
-
-@media (max-width: 899px) {
-    #tabNav {
-        display: flex !important;
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        z-index: 95;
-        background: var(--bg-surface);
-        border-top: 1px solid var(--border-subtle);
-        padding-bottom: var(--safe-bottom);
-    }
-
-    /* Add padding to app content for tab nav */
-    #app {
-        padding-bottom: 0;
-    }
-
-    /* Mobile: FAB above tab nav */
-    .fab {
-        bottom: calc(var(--nav-h) + var(--space-lg) + var(--safe-bottom));
     }
 }
 
