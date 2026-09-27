@@ -9,6 +9,7 @@ const Viewport = {
     currentTime: 0,
     duration: 5,
     fps: 30,
+    loop: true,
     animationId: null,
     lastFrameTime: 0,
     onTimeUpdate: null,
@@ -77,7 +78,8 @@ const Viewport = {
         const btnLoop = document.getElementById('btnLoop');
         if (btnLoop) {
             btnLoop.addEventListener('click', () => {
-                btnLoop.classList.toggle('on');
+                this.loop = !this.loop;
+                btnLoop.classList.toggle('on', this.loop);
             });
         }
 
@@ -234,8 +236,7 @@ const Viewport = {
                 this.currentTime += delta;
 
                 if (this.currentTime >= this.duration) {
-                    const loopBtn = document.getElementById('btnLoop');
-                    if (loopBtn?.classList.contains('on')) {
+                    if (this.loop) {
                         this.currentTime = 0;
                         AudioEngine.seek(0);
                     } else {
