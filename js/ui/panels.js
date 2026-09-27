@@ -264,12 +264,42 @@ const Panels = {
             const response = await fetch(downloadUrl);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const text = await response.text();
+
+            // Check if response is HTML (Google Drive preview page) instead of XML
+            if (text.trim().startsWith('<') || text.includes('<!DOCTYPE html>') || text.includes('<html')) {
+                // Try to extract the actual download URL from the preview page
+                const confirmMatch = text.match(/confirm=([0-9A-Za-z_-]+)/);
+                const uuidMatch = text.match(/uuid=([0-9a-f-]+)/);
+                
+                let actualUrl = downloadUrl;
+                if (confirmMatch) {
+                    actualUrl = `https://drive.google.com/uc?export=download&id=${fileId}&confirm=${confirmMatch[1]}`;
+                } else if (uuidMatch) {
+                    actualUrl = `https://drive.google.com/uc?export=download&id=${fileId}&confirm=t&uuid=${uuidMatch[1]}`;
+                }
+
+                // Try with confirm parameter
+                const confirmResponse = await fetch(actualUrl);
+                if (confirmResponse.ok) {
+                    const confirmText = await confirmResponse.text();
+                    if (!confirmText.trim().startsWith('<') && !confirmText.includes('<!DOCTYPE html>')) {
+                        const project = PresetParser.parse(confirmText);
+                        this.setProject(project);
+                        App.setProject(project);
+                        this.showStatus('driveStatus', `Berhasil: ${project.name} (${project.layers.length} layers)`, 'success');
+                        return;
+                    }
+                }
+
+                throw new Error('Google Drive return preview page. Pastikan file di-share "Anyone with the link" atau upload XML langsung.');
+            }
+
             const project = PresetParser.parse(text);
             this.setProject(project);
             App.setProject(project);
-            this.showStatus('driveStatus', `Berhasil: ${project.name}`, 'success');
+            this.showStatus('driveStatus', `Berhasil: ${project.name} (${project.layers.length} layers)`, 'success');
         } catch (e) {
-            this.showStatus('driveStatus', `Error: ${e.message}. Pastikan file di-share publik.`, 'error');
+            this.showStatus('driveStatus', `Error: ${e.message}`, 'error');
         }
     },
 
