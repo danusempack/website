@@ -3,8 +3,10 @@
 Pemutar dan editor preset Alight Motion (`.xml`) yang berjalan sepenuhnya di
 browser. WebGL2, tanpa server, tanpa unggah, tanpa akun.
 
-Buka `index.html` lewat HTTP lokal atau deploy statis apa pun (repo ini memakai
-GitHub Pages). Tidak ada build step, tidak ada dependensi, tidak ada `node_modules`.
+Live: **https://danusempack.github.io/website/**
+
+Tidak ada build step, tidak ada dependensi, tidak ada `node_modules`. Clone lalu
+serve statis, atau deploy ke host statis mana pun.
 
 ## Apa yang dilakukan
 

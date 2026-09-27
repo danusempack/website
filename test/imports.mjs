@@ -211,7 +211,24 @@ for (const abs of shippedAbs) {
   }
 }
 
-console.log('\n[9] Content-Security-Policy is present and satisfiable');
+console.log('\n[9] every URL the page references resolves to a real file');
+bad = 0;
+const refs = new Set();
+for (const m of html.matchAll(/(?:href|src)=["']([^"']+)["']/gi)) {
+  const u = m[1];
+  if (/^(?:https?:|data:|mailto:|#)/i.test(u)) continue;
+  refs.add(u.replace(/^\.\//, '').split('#')[0] || 'index.html');
+}
+for (const m of stripComments(fs.readFileSync(path.join(JS, 'core', 'sw.js'), 'utf8'))
+  .matchAll(/['"]([^'"]+\.(?:js|css|html|json|svg|webmanifest|png))['"]/g)) {
+  refs.add(m[1].replace(/^\.\//, ''));
+}
+for (const r of [...refs].sort()) {
+  if (!fs.existsSync(path.join(ROOT, r))) { fail(`${r} is referenced but missing`); bad++; }
+}
+if (!bad) pass(`${refs.size} referenced paths exist, so nothing 404s after deploy`);
+
+console.log('\n[10] Content-Security-Policy is present and satisfiable');
 bad = 0;
 // The CSP value is double-quoted and full of single quotes, so the content
 // capture must exclude only the double quote.
