@@ -134,7 +134,6 @@ const Panels = {
                     const response = await fetch(proxyUrl);
                     if (response.ok) {
                         const data = await response.json();
-                        // allorigins returns { contents: "..." }, codetabs returns raw
                         html = data.contents || data;
                         if (html && html.length > 100) break;
                     }
@@ -156,7 +155,7 @@ const Panels = {
                 App.setProject(project);
                 this.showStatus('amStatus', `Berhasil: ${project.name} (${project.layers.length} layers)`, 'success');
             } else {
-                // Fallback: try to find API endpoint in HTML
+                // Try to find API endpoint in HTML
                 const apiMatch = html.match(/https?:\/\/[^"'\s]+api[^"'\s]+share[^"'\s]+/i);
                 if (apiMatch) {
                     const apiUrl = apiMatch[0];
@@ -169,6 +168,28 @@ const Panels = {
                         App.setProject(project);
                         this.showStatus('amStatus', `Berhasil: ${project.name} (${project.layers.length} layers)`, 'success');
                         return;
+                    }
+                }
+
+                // Try to find Firebase Storage data URL
+                const fbMatch = html.match(/https?:\/\/firebasestorage\.googleapis\.com[^"'\s]+/i);
+                if (fbMatch) {
+                    const fbUrl = fbMatch[0].replace(/\\u0026/g, '&').replace(/\\u003d/g, '=');
+                    const fbResponse = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(fbUrl)}`);
+                    if (fbResponse.ok) {
+                        const fbData = await fbResponse.json();
+                        if (fbData.contents && !fbData.contents.startsWith('<')) {
+                            try {
+                                const parsed = JSON.parse(fbData.contents);
+                                const project = this.buildPresetFromData(parsed, url);
+                                this.setProject(project);
+                                App.setProject(project);
+                                this.showStatus('amStatus', `Berhasil: ${project.name} (${project.layers.length} layers)`, 'success');
+                                return;
+                            } catch (e) {
+                                // Not JSON, continue
+                            }
+                        }
                     }
                 }
 
