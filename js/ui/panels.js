@@ -121,41 +121,96 @@ const Panels = {
         try {
             this.showStatus('amStatus', 'Mengambil dari Alight Motion...');
 
-            // Try direct fetch first (may fail due to CORS)
-            try {
-                const response = await fetch(url, { mode: 'cors' });
-                if (response.ok) {
-                    const text = await response.text();
-                    const data = this.extractDataFromHtml(text);
-                    if (data) {
-                        const project = this.buildPresetFromData(data, url);
+            // Use free CORS proxy to fetch the share page
+            const corsProxies = [
+                `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+                `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+            ];
+
+            let html = null;
+            for (const proxyUrl of corsProxies) {
+                try {
+                    const response = await fetch(proxyUrl);
+                    if (response.ok) {
+                        const data = await response.json();
+                        // allorigins returns { contents: "..." }, codetabs returns raw
+                        html = data.contents || data;
+                        if (html && html.length > 100) break;
+                    }
+                } catch (e) {
+                    continue;
+                }
+            }
+
+            if (!html) {
+                throw new Error('Semua CORS proxy gagal');
+            }
+
+            // Try to extract preset data from HTML
+            const data = this.extractDataFromHtml(html);
+
+            if (data) {
+                const project = this.buildPresetFromData(data, url);
+                this.setProject(project);
+                App.setProject(project);
+                this.showStatus('amStatus', `Berhasil: ${project.name} (${project.layers.length} layers)`, 'success');
+            } else {
+                // Fallback: try to find API endpoint in HTML
+                const apiMatch = html.match(/https?:\/\/[^"'\s]+api[^"'\s]+share[^"'\s]+/i);
+                if (apiMatch) {
+                    const apiUrl = apiMatch[0];
+                    const apiResponse = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`);
+                    if (apiResponse.ok) {
+                        const apiData = await apiResponse.json();
+                        const parsed = JSON.parse(apiData.contents);
+                        const project = this.buildPresetFromData(parsed, url);
                         this.setProject(project);
                         App.setProject(project);
                         this.showStatus('amStatus', `Berhasil: ${project.name} (${project.layers.length} layers)`, 'success');
                         return;
                     }
                 }
-            } catch (e) {
-                // CORS failed, try proxy
-            }
 
-            // Try our proxy API
-            const proxyUrl = `/api/alight-proxy?url=${encodeURIComponent(url)}`;
-            const response = await fetch(proxyUrl);
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-
-            const data = await response.json();
-
-            if (data.success && data.preset) {
-                const project = data.preset;
+                // Last resort: create basic preset
+                const project = {
+                    name: 'Alight Preset',
+                    aspectRatio: '9:16',
+                    fps: 30,
+                    duration: 5,
+                    width: 540,
+                    height: 960,
+                    backgroundColor: '#1a1a2e',
+                    layers: [{
+                        id: 'bg',
+                        type: 'shape',
+                        name: 'Background',
+                        visible: true,
+                        locked: false,
+                        blendMode: 'normal',
+                        opacity: 1,
+                        transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, opacity: 1, anchorX: 0.5, anchorY: 0.5 },
+                        tracks: {},
+                        effects: [],
+                        startTime: 0,
+                        duration: 5,
+                        shapeData: {
+                            shapeType: 'rectangle',
+                            fill: '#1a1a2e',
+                            fillEnabled: true,
+                            stroke: '#000000',
+                            strokeWidth: 0,
+                            strokeEnabled: false,
+                            width: 540,
+                            height: 960
+                        }
+                    }],
+                    mediaSlots: [],
+                    source: url
+                };
                 this.setProject(project);
                 App.setProject(project);
-                this.showStatus('amStatus', `Berhasil: ${project.name} (${project.layers.length} layers)`, 'success');
-            } else {
-                throw new Error(data.error || 'Unknown error');
+                this.showStatus('amStatus', 'Preset dasar dimuat. Upload XML untuk data lengkap.', 'warn');
             }
         } catch (e) {
             this.showStatus('amStatus', `Error: ${e.message}. Coba upload file XML langsung.`, 'error');
