@@ -121,23 +121,128 @@ const Panels = {
         try {
             this.showStatus('amStatus', 'Mengambil dari Alight Motion...');
 
-            // Use our backend proxy
-            const proxyUrl = `https://ryo-motion-proxy.onrender.com/api/alight-proxy?url=${encodeURIComponent(url)}`;
-            const response = await fetch(proxyUrl);
+            // Try multiple CORS proxies with fallback
+            const proxies = [
+                (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+                (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+                (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+                (u) => `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(u)}`,
+                (u) => `https://cors-anywhere.herokuapp.com/${encodeURIComponent(u)}`,
+                (u) => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+            ];
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
+            let html = null;
+            let lastError = null;
+
+            for (const proxyFn of proxies) {
+                try {
+                    const proxyUrl = proxyFn(url);
+                    const response = await fetch(proxyUrl);
+                    if (response.ok) {
+                        const text = await response.text();
+                        // allorigins /get/ returns JSON with contents
+                        if (text.startsWith('{') && text.includes('contents')) {
+                            try {
+                                const data = JSON.parse(text);
+                                if (data.contents && data.contents.length > 100) {
+                                    html = data.contents;
+                                    break;
+                                }
+                            } catch (e) {
+                                // Not JSON, continue
+                            }
+                        } else if (text.length > 100) {
+                            html = text;
+                            break;
+                        }
+                    }
+                } catch (e) {
+                    lastError = e;
+                    continue;
+                }
             }
 
-            const data = await response.json();
+            if (!html) {
+                throw new Error(lastError?.message || 'Semua CORS proxy gagal');
+            }
 
-            if (data.success && data.preset) {
-                const project = data.preset;
+            // Try to extract preset data from HTML
+            const data = this.extractDataFromHtml(html);
+
+            if (data) {
+                const project = this.buildPresetFromData(data, url);
                 this.setProject(project);
                 App.setProject(project);
                 this.showStatus('amStatus', `Berhasil: ${project.name} (${project.layers.length} layers)`, 'success');
             } else {
-                throw new Error(data.error || 'Unknown error');
+                // Try to find Firebase Storage data URL
+                const fbMatch = html.match(/https?:\/\/firebasestorage\.googleapis\.com[^"'\s]+/i);
+                if (fbMatch) {
+                    const fbUrl = fbMatch[0].replace(/\\u0026/g, '&').replace(/\\u003d/g, '=');
+                    // Try to fetch Firebase data through proxies
+                    for (const proxyFn of proxies) {
+                        try {
+                            const fbResponse = await fetch(proxyFn(fbUrl));
+                            if (fbResponse.ok) {
+                                const fbText = await fbResponse.text();
+                                if (fbText && !fbText.startsWith('<')) {
+                                    try {
+                                        const parsed = JSON.parse(fbText);
+                                        const project = this.buildPresetFromData(parsed, url);
+                                        this.setProject(project);
+                                        App.setProject(project);
+                                        this.showStatus('amStatus', `Berhasil: ${project.name} (${project.layers.length} layers)`, 'success');
+                                        return;
+                                    } catch (e) {
+                                        // Not JSON, continue
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            continue;
+                        }
+                    }
+                }
+
+                // Last resort: create basic preset
+                const project = {
+                    name: 'Alight Preset',
+                    aspectRatio: '9:16',
+                    fps: 30,
+                    duration: 5,
+                    width: 540,
+                    height: 960,
+                    backgroundColor: '#1a1a2e',
+                    layers: [{
+                        id: 'bg',
+                        type: 'shape',
+                        name: 'Background',
+                        visible: true,
+                        locked: false,
+                        blendMode: 'normal',
+                        opacity: 1,
+                        transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, opacity: 1, anchorX: 0.5, anchorY: 0.5 },
+                        tracks: {},
+                        effects: [],
+                        startTime: 0,
+                        duration: 5,
+                        shapeData: {
+                            shapeType: 'rectangle',
+                            fill: '#1a1a2e',
+                            fillEnabled: true,
+                            stroke: '#000000',
+                            strokeWidth: 0,
+                            strokeEnabled: false,
+                            width: 540,
+                            height: 960
+                        }
+                    }],
+                    mediaSlots: [],
+                    source: url
+                };
+                this.setProject(project);
+                App.setProject(project);
+                this.showStatus('amStatus', 'Preset dasar dimuat. Upload XML untuk data lengkap.', 'warn');
             }
         } catch (e) {
             this.showStatus('amStatus', `Error: ${e.message}. Coba upload file XML langsung.`, 'error');
