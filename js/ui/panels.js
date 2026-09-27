@@ -121,117 +121,23 @@ const Panels = {
         try {
             this.showStatus('amStatus', 'Mengambil dari Alight Motion...');
 
-            // Use free CORS proxy to fetch the share page
-            const corsProxies = [
-                `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-                `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
-                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
-            ];
+            // Use our backend proxy
+            const proxyUrl = `https://ryo-motion-proxy.onrender.com/api/alight-proxy?url=${encodeURIComponent(url)}`;
+            const response = await fetch(proxyUrl);
 
-            let html = null;
-            for (const proxyUrl of corsProxies) {
-                try {
-                    const response = await fetch(proxyUrl);
-                    if (response.ok) {
-                        const data = await response.json();
-                        html = data.contents || data;
-                        if (html && html.length > 100) break;
-                    }
-                } catch (e) {
-                    continue;
-                }
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
             }
 
-            if (!html) {
-                throw new Error('Semua CORS proxy gagal');
-            }
+            const data = await response.json();
 
-            // Try to extract preset data from HTML
-            const data = this.extractDataFromHtml(html);
-
-            if (data) {
-                const project = this.buildPresetFromData(data, url);
+            if (data.success && data.preset) {
+                const project = data.preset;
                 this.setProject(project);
                 App.setProject(project);
                 this.showStatus('amStatus', `Berhasil: ${project.name} (${project.layers.length} layers)`, 'success');
             } else {
-                // Try to find API endpoint in HTML
-                const apiMatch = html.match(/https?:\/\/[^"'\s]+api[^"'\s]+share[^"'\s]+/i);
-                if (apiMatch) {
-                    const apiUrl = apiMatch[0];
-                    const apiResponse = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`);
-                    if (apiResponse.ok) {
-                        const apiData = await apiResponse.json();
-                        const parsed = JSON.parse(apiData.contents);
-                        const project = this.buildPresetFromData(parsed, url);
-                        this.setProject(project);
-                        App.setProject(project);
-                        this.showStatus('amStatus', `Berhasil: ${project.name} (${project.layers.length} layers)`, 'success');
-                        return;
-                    }
-                }
-
-                // Try to find Firebase Storage data URL
-                const fbMatch = html.match(/https?:\/\/firebasestorage\.googleapis\.com[^"'\s]+/i);
-                if (fbMatch) {
-                    const fbUrl = fbMatch[0].replace(/\\u0026/g, '&').replace(/\\u003d/g, '=');
-                    const fbResponse = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(fbUrl)}`);
-                    if (fbResponse.ok) {
-                        const fbData = await fbResponse.json();
-                        if (fbData.contents && !fbData.contents.startsWith('<')) {
-                            try {
-                                const parsed = JSON.parse(fbData.contents);
-                                const project = this.buildPresetFromData(parsed, url);
-                                this.setProject(project);
-                                App.setProject(project);
-                                this.showStatus('amStatus', `Berhasil: ${project.name} (${project.layers.length} layers)`, 'success');
-                                return;
-                            } catch (e) {
-                                // Not JSON, continue
-                            }
-                        }
-                    }
-                }
-
-                // Last resort: create basic preset
-                const project = {
-                    name: 'Alight Preset',
-                    aspectRatio: '9:16',
-                    fps: 30,
-                    duration: 5,
-                    width: 540,
-                    height: 960,
-                    backgroundColor: '#1a1a2e',
-                    layers: [{
-                        id: 'bg',
-                        type: 'shape',
-                        name: 'Background',
-                        visible: true,
-                        locked: false,
-                        blendMode: 'normal',
-                        opacity: 1,
-                        transform: { x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, opacity: 1, anchorX: 0.5, anchorY: 0.5 },
-                        tracks: {},
-                        effects: [],
-                        startTime: 0,
-                        duration: 5,
-                        shapeData: {
-                            shapeType: 'rectangle',
-                            fill: '#1a1a2e',
-                            fillEnabled: true,
-                            stroke: '#000000',
-                            strokeWidth: 0,
-                            strokeEnabled: false,
-                            width: 540,
-                            height: 960
-                        }
-                    }],
-                    mediaSlots: [],
-                    source: url
-                };
-                this.setProject(project);
-                App.setProject(project);
-                this.showStatus('amStatus', 'Preset dasar dimuat. Upload XML untuk data lengkap.', 'warn');
+                throw new Error(data.error || 'Unknown error');
             }
         } catch (e) {
             this.showStatus('amStatus', `Error: ${e.message}. Coba upload file XML langsung.`, 'error');
@@ -281,46 +187,27 @@ const Panels = {
 
         try {
             this.showStatus('driveStatus', 'Mengambil dari Google Drive...');
-            const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-            const response = await fetch(downloadUrl);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const text = await response.text();
 
-            // Check if response is HTML (Google Drive preview page) instead of XML
-            if (text.trim().startsWith('<') || text.includes('<!DOCTYPE html>') || text.includes('<html')) {
-                // Try to extract the actual download URL from the preview page
-                const confirmMatch = text.match(/confirm=([0-9A-Za-z_-]+)/);
-                const uuidMatch = text.match(/uuid=([0-9a-f-]+)/);
-                
-                let actualUrl = downloadUrl;
-                if (confirmMatch) {
-                    actualUrl = `https://drive.google.com/uc?export=download&id=${fileId}&confirm=${confirmMatch[1]}`;
-                } else if (uuidMatch) {
-                    actualUrl = `https://drive.google.com/uc?export=download&id=${fileId}&confirm=t&uuid=${uuidMatch[1]}`;
-                }
+            // Use our backend proxy
+            const proxyUrl = `https://ryo-motion-proxy.onrender.com/api/gdrive-proxy?url=${encodeURIComponent(url)}`;
+            const response = await fetch(proxyUrl);
 
-                // Try with confirm parameter
-                const confirmResponse = await fetch(actualUrl);
-                if (confirmResponse.ok) {
-                    const confirmText = await confirmResponse.text();
-                    if (!confirmText.trim().startsWith('<') && !confirmText.includes('<!DOCTYPE html>')) {
-                        const project = PresetParser.parse(confirmText);
-                        this.setProject(project);
-                        App.setProject(project);
-                        this.showStatus('driveStatus', `Berhasil: ${project.name} (${project.layers.length} layers)`, 'success');
-                        return;
-                    }
-                }
-
-                throw new Error('Google Drive return preview page. Pastikan file di-share "Anyone with the link" atau upload XML langsung.');
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
             }
 
-            const project = PresetParser.parse(text);
-            this.setProject(project);
-            App.setProject(project);
-            this.showStatus('driveStatus', `Berhasil: ${project.name} (${project.layers.length} layers)`, 'success');
+            const data = await response.json();
+
+            if (data.success && data.content) {
+                const project = PresetParser.parse(data.content);
+                this.setProject(project);
+                App.setProject(project);
+                this.showStatus('driveStatus', `Berhasil: ${project.name} (${project.layers.length} layers)`, 'success');
+            } else {
+                throw new Error(data.error || 'Unknown error');
+            }
         } catch (e) {
-            this.showStatus('driveStatus', `Error: ${e.message}`, 'error');
+            this.showStatus('driveStatus', `Error: ${e.message}. Pastikan file di-share publik.`, 'error');
         }
     },
 

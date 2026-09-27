@@ -1,0 +1,12 @@
+# Render Blueprint - Ryo Motion Proxy
+services:
+  - type: web
+    name: ryo-motion-proxy
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
