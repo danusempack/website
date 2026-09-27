@@ -1,4 +1,4 @@
-/* ─── MotionForge App ────────────────────────────────────────────────────────
+/* ─── Ryo Motion App ────────────────────────────────────────────────────────
    Main application entry point — wires everything together
    ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -11,7 +11,7 @@ const App = {
         this.initEngine();
         this.loadSample();
         this.isReady = true;
-        console.log('MotionForge ready');
+        console.log('Ryo Motion ready');
     },
 
     initUI() {
@@ -136,4 +136,4 @@ if (document.readyState === 'loading') {
 }
 
 // Expose to global scope
-window.MotionForge = App;
+window.RyoMotion = App;

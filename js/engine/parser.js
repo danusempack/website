@@ -337,7 +337,7 @@ const PresetParser = {
                     startTime: 0,
                     duration: 5,
                     textData: {
-                        text: 'MotionForge',
+                        text: 'Ryo Motion',
                         fontFamily: 'Inter',
                         fontSize: 72,
                         fontWeight: 700,

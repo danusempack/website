@@ -405,7 +405,7 @@ const Panels = {
             this.showStatus('exportStatus', `Selesai! Ukuran: ${(result.size / 1024 / 1024).toFixed(2)} MB`, 'success');
 
             // Auto download
-            Utils.downloadBlob(result.blob, `motionforge-export.${result.blob.type.includes('mp4') ? 'mp4' : 'webm'}`);
+            Utils.downloadBlob(result.blob, `ryo-motion-export.${result.blob.type.includes('mp4') ? 'mp4' : 'webm'}`);
 
         } catch (e) {
             this.showStatus('exportStatus', `Error: ${e.message}`, 'error');
