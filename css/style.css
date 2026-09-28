@@ -1836,6 +1836,225 @@ dialog::backdrop {
     flex: 1;
 }
 
+/* ─── Debug Panel ──────────────────────────────────────────────────────────── */
+
+.debug-panel {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 20;
+    width: 260px;
+    max-height: 70%;
+    background: rgba(11, 12, 16, 0.92);
+    border: 1px solid rgba(34, 211, 238, 0.3);
+    border-radius: 12px;
+    backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.debug-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--accent-secondary);
+    flex: none;
+}
+
+.debug-content {
+    padding: 8px 12px;
+    overflow-y: auto;
+    font-size: 0.72rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.debug-empty {
+    text-align: center;
+    padding: 20px 8px;
+    color: var(--text-muted);
+}
+
+.debug-layer-name {
+    font-weight: 600;
+    color: var(--accent-teal);
+    margin-bottom: 6px;
+    font-size: 0.78rem;
+}
+
+.debug-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 2px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.debug-label {
+    color: var(--text-muted);
+}
+
+.debug-value {
+    color: var(--accent-secondary);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+}
+
+.debug-section {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.debug-section-title {
+    font-weight: 600;
+    color: var(--accent-teal);
+    margin-bottom: 4px;
+    font-size: 0.72rem;
+}
+
+.debug-effect {
+    background: rgba(168, 85, 247, 0.1);
+    border-radius: 6px;
+    padding: 4px 8px;
+    margin-bottom: 4px;
+}
+
+.debug-effect-name {
+    font-weight: 600;
+    color: var(--accent-purple);
+    font-size: 0.68rem;
+}
+
+.debug-kf {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: #fbbf24;
+    border: 1px solid rgba(0, 0, 0, 0.5);
+    transform: rotate(45deg);
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
+/* ─── Layer Properties Panel ───────────────────────────────────────────────── */
+
+.layer-props-panel {
+    position: fixed;
+    top: var(--header-h);
+    right: 0;
+    bottom: var(--nav-h);
+    width: min(300px, 85vw);
+    z-index: 90;
+    background: var(--bg-surface);
+    border-left: 1px solid var(--border-subtle);
+    transform: translateX(100%);
+    transition: transform var(--transition-base);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.layer-props-panel.open {
+    transform: translateX(0);
+}
+
+.layer-props-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+    border-bottom: 1px solid var(--border-subtle);
+    flex: none;
+}
+
+.layer-props-header h3 {
+    flex: 1;
+    font-size: 0.88rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.layer-props-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.layer-props-empty {
+    text-align: center;
+    padding: var(--space-xl) var(--space-md);
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+
+.layer-props-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.layer-props-field label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.layer-props-field input[type="range"] {
+    width: 100%;
+}
+
+.layer-props-field .range-value {
+    font-size: 0.72rem;
+    color: var(--accent-secondary);
+    font-family: var(--font-mono);
+}
+
+.layer-props-color {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.layer-props-color input[type="color"] {
+    width: 40px;
+    height: 32px;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    background: none;
+}
+
+.layer-props-color input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.layer-props-color input[type="color"]::-webkit-color-swatch {
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+}
+
+.layer-props-actions {
+    display: flex;
+    gap: var(--space-sm);
+    margin-top: auto;
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.layer-props-actions .btn {
+    flex: 1;
+}
+
 /* ─── Mobile bottom sheet style ────────────────────────────────────────────── */
 
 @media (max-width: 640px) {

@@ -175,6 +175,11 @@ const Viewport = {
                     break;
                 case 'i':
                 case 'I':
+                    const debugPanel = document.getElementById('debugPanel');
+                    if (debugPanel) debugPanel.hidden = !debugPanel.hidden;
+                    break;
+                case 'i':
+                case 'I':
                     if (!e.ctrlKey && !e.metaKey) {
                         const debugPanel = document.getElementById('debugPanel');
                         if (debugPanel) debugPanel.hidden = !debugPanel.hidden;
@@ -187,6 +192,123 @@ const Viewport = {
         window.addEventListener('resize', () => {
             if (this.project) this.setProject(this.project);
         });
+
+        // Debug inspector — click on canvas to inspect layer
+        this.canvas.addEventListener('click', (e) => {
+            if (this.isPlaying) return;
+            const rect = this.canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            this.inspectLayerAt(x, y);
+        });
+
+        // Debug panel close button
+        const btnCloseDebug = document.getElementById('btnCloseDebug');
+        if (btnCloseDebug) {
+            btnCloseDebug.addEventListener('click', () => {
+                document.getElementById('debugPanel').hidden = true;
+            });
+        }
+    },
+
+    inspectLayerAt(x, y) {
+        if (!this.project) return;
+
+        const debugPanel = document.getElementById('debugPanel');
+        const debugContent = document.getElementById('debugContent');
+        if (!debugPanel || !debugContent) return;
+
+        // Find layer at position (reverse order for top-most layer)
+        const layers = [...this.project.layers].reverse();
+        let foundLayer = null;
+
+        for (const layer of layers) {
+            if (!layer.visible) continue;
+            const transform = Renderer.getAnimatedTransform(layer, this.currentTime);
+            const w = Renderer.getLayerWidth(layer);
+            const h = Renderer.getLayerHeight(layer);
+
+            // Simple bounding box check
+            const cx = transform.x + Renderer.width / 2;
+            const cy = transform.y + Renderer.height / 2;
+            const scaleX = transform.scaleX;
+            const scaleY = transform.scaleY;
+
+            if (x >= cx - (w * scaleX) / 2 && x <= cx + (w * scaleX) / 2 &&
+                y >= cy - (h * scaleY) / 2 && y <= cy + (h * scaleY) / 2) {
+                foundLayer = layer;
+                break;
+            }
+        }
+
+        if (foundLayer) {
+            this.showDebugInfo(foundLayer);
+            debugPanel.hidden = false;
+        } else {
+            debugContent.innerHTML = '<div class="debug-empty">Tidak ada layer di posisi ini</div>';
+            debugPanel.hidden = false;
+        }
+    },
+
+    showDebugInfo(layer) {
+        const debugContent = document.getElementById('debugContent');
+        if (!debugContent) return;
+
+        const transform = Renderer.getAnimatedTransform(layer, this.currentTime);
+        const tracks = layer.tracks || {};
+        const effects = layer.effects || [];
+
+        let html = `<div class="debug-layer-name">${Utils.escapeHtml(layer.name)}</div>`;
+        html += `<div class="debug-row"><span class="debug-label">Type</span><span class="debug-value">${layer.type}</span></div>`;
+        html += `<div class="debug-row"><span class="debug-label">Visible</span><span class="debug-value">${layer.visible ? 'Yes' : 'No'}</span></div>`;
+        html += `<div class="debug-row"><span class="debug-label">Opacity</span><span class="debug-value">${(transform.opacity * 100).toFixed(0)}%</span></div>`;
+        html += `<div class="debug-row"><span class="debug-label">Position</span><span class="debug-value">${transform.x.toFixed(1)}, ${transform.y.toFixed(1)}</span></div>`;
+        html += `<div class="debug-row"><span class="debug-label">Scale</span><span class="debug-value">${transform.scaleX.toFixed(2)}x</span></div>`;
+        html += `<div class="debug-row"><span class="debug-label">Rotation</span><span class="debug-value">${transform.rotation.toFixed(1)}°</span></div>`;
+
+        // Tracks
+        if (Object.keys(tracks).length > 0) {
+            html += '<div class="debug-section"><div class="debug-section-title">Keyframes</div>';
+            for (const [prop, track] of Object.entries(tracks)) {
+                html += `<div class="debug-row"><span class="debug-label">${prop}</span><span class="debug-value">${track.keyframes.length} kf</span></div>`;
+            }
+            html += '</div>';
+        }
+
+        // Effects
+        if (effects.length > 0) {
+            html += '<div class="debug-section"><div class="debug-section-title">Effects</div>';
+            for (const effect of effects) {
+                html += `<div class="debug-effect"><div class="debug-effect-name">${Utils.escapeHtml(effect.name)}</div>`;
+                if (effect.params && effect.params.length > 0) {
+                    for (const param of effect.params) {
+                        html += `<div class="debug-row"><span class="debug-label">${param.label}</span><span class="debug-value">${param.value}</span></div>`;
+                    }
+                }
+                html += '</div>';
+            }
+            html += '</div>';
+        }
+
+        // Shape data
+        if (layer.shapeData) {
+            html += '<div class="debug-section"><div class="debug-section-title">Shape</div>';
+            html += `<div class="debug-row"><span class="debug-label">Type</span><span class="debug-value">${layer.shapeData.shapeType}</span></div>`;
+            html += `<div class="debug-row"><span class="debug-label">Fill</span><span class="debug-value">${layer.shapeData.fill}</span></div>`;
+            html += `<div class="debug-row"><span class="debug-label">Size</span><span class="debug-value">${layer.shapeData.width} x ${layer.shapeData.height}</span></div>`;
+            html += '</div>';
+        }
+
+        // Text data
+        if (layer.textData) {
+            html += '<div class="debug-section"><div class="debug-section-title">Text</div>';
+            html += `<div class="debug-row"><span class="debug-label">Content</span><span class="debug-value">${Utils.escapeHtml(layer.textData.text)}</span></div>`;
+            html += `<div class="debug-row"><span class="debug-label">Font</span><span class="debug-value">${layer.textData.fontFamily} ${layer.textData.fontSize}px</span></div>`;
+            html += `<div class="debug-row"><span class="debug-label">Color</span><span class="debug-value">${layer.textData.color}</span></div>`;
+            html += '</div>';
+        }
+
+        debugContent.innerHTML = html;
     },
 
     inspectLayerAt(x, y) {
