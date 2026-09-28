@@ -201,14 +201,6 @@ const Viewport = {
             const y = e.clientY - rect.top;
             this.inspectLayerAt(x, y);
         });
-
-        // Debug panel close button
-        const btnCloseDebug = document.getElementById('btnCloseDebug');
-        if (btnCloseDebug) {
-            btnCloseDebug.addEventListener('click', () => {
-                document.getElementById('debugPanel').hidden = true;
-            });
-        }
     },
 
     inspectLayerAt(x, y) {
