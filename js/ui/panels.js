@@ -564,15 +564,7 @@ const Panels = {
             </div>
         `).join('');
 
-        // Bind events
-        list.querySelectorAll('.layer-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                if (e.target.closest('.layer-visibility')) return;
-                const layerId = item.dataset.layerId;
-                if (this.onLayerSelect) this.onLayerSelect(layerId);
-            });
-        });
-
+        // Bind visibility toggle buttons only (layer selection handled by event delegation in app.js)
         list.querySelectorAll('[data-action="toggle-visibility"]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
