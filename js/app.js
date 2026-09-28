@@ -17,361 +17,83 @@ const App = {
     initUI() {
         // Initialize viewport
         const canvas = document.getElementById('viewport');
-        if (canvas) {
-            Viewport.init(canvas);
-        }
+        if (canvas) Viewport.init(canvas);
 
         // Initialize panels
         Panels.init();
 
-        // Initialize timeline (desktop only)
+        // Initialize timeline
         const timelineDock = document.getElementById('timelineDock');
-        if (timelineDock) {
-            Timeline.init(timelineDock);
-        }
+        if (timelineDock) Timeline.init(timelineDock);
 
         // Wire viewport events
-        Viewport.onTimeUpdate = (time) => {
-            Timeline.setTime(time);
-        };
-
-        Viewport.onPlayStateChange = (isPlaying) => {
-            // Sync UI if needed
-        };
-
-        // Wire panel events
-        Panels.onLayerSelect = (layerId) => {
-            Timeline.selectLayer(layerId);
-        };
+        Viewport.onTimeUpdate = (time) => Timeline.setTime(time);
 
         // Open XML button
         const btnOpenXML = document.getElementById('btnOpenXML');
         if (btnOpenXML) {
             btnOpenXML.addEventListener('click', () => {
-                const input = document.getElementById('fileInput');
-                if (input) input.click();
+                document.getElementById('fileInput')?.click();
             });
         }
 
-        // Panel close button
-        const sidePanel = document.getElementById('sidePanel');
-        const btnClosePanel = document.getElementById('btnClosePanel');
-        if (btnClosePanel && sidePanel) {
-            btnClosePanel.addEventListener('click', () => {
-                sidePanel.classList.remove('open');
+        // Layer selection → show properties
+        const layerList = document.getElementById('layerList');
+        if (layerList) {
+            layerList.addEventListener('click', (e) => {
+                const item = e.target.closest('.layer-item');
+                if (!item || e.target.closest('.layer-visibility')) return;
+                const layerId = item.dataset.layerId;
+                this.selectLayer(layerId);
             });
         }
 
-        // Tab navigation — toggle panel on mobile
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                if (window.innerWidth < 900 && sidePanel) {
-                    sidePanel.classList.toggle('open');
-                }
+        // Layer properties panel close
+        const btnClose = document.getElementById('btnCloseLayerProps');
+        const panel = document.getElementById('layerPropsPanel');
+        if (btnClose && panel) {
+            btnClose.addEventListener('click', () => panel.classList.remove('open'));
+        }
+
+        // Layer properties panel — event delegation
+        const propsBody = document.getElementById('layerPropsBody');
+        if (propsBody) {
+            propsBody.addEventListener('input', (e) => {
+                const input = e.target;
+                if (!input.dataset?.layer) return;
+                this.updateLayerProperty(input.dataset.layer, input.dataset.prop, input.type === 'range' ? parseFloat(input.value) : input.value, input);
             });
-        });
 
-        // Layer properties panel
-        const layerPropsPanel = document.getElementById('layerPropsPanel');
-        const layerPropsBody = document.getElementById('layerPropsBody');
-        const layerPropsTitle = document.getElementById('layerPropsTitle');
-        const btnCloseLayerProps = document.getElementById('btnCloseLayerProps');
-
-        if (btnCloseLayerProps && layerPropsPanel) {
-            btnCloseLayerProps.addEventListener('click', () => {
-                layerPropsPanel.classList.remove('open');
+            propsBody.addEventListener('click', (e) => {
+                const btn = e.target.closest('[data-action]');
+                if (!btn) return;
+                this.handleLayerAction(btn.dataset.action, btn.dataset.layer);
             });
         }
 
-        // Show layer properties when layer is selected
-        Panels.onLayerSelect = (layerId) => {
-            Timeline.selectLayer(layerId);
-            if (layerPropsPanel && layerPropsBody) {
-                const layer = this.project?.layers.find(l => l.id === layerId);
-                if (layer) {
-                    this.showLayerProperties(layer);
-                    layerPropsPanel.classList.add('open');
-                }
-            }
-        };
-    },
-
-    showLayerProperties(layer) {
-        const layerPropsBody = document.getElementById('layerPropsBody');
-        const layerPropsTitle = document.getElementById('layerPropsTitle');
-        if (!layerPropsBody || !layerPropsTitle) return;
-
-        layerPropsTitle.textContent = layer.name;
-
-        let html = '';
-
-        // Transform section
-        html += '<div class="layer-props-field"><label>Position X</label>';
-        html += `<input type="range" min="-500" max="500" value="${layer.transform.x}" data-prop="x" data-layer="${layer.id}">`;
-        html += `<span class="range-value">${layer.transform.x.toFixed(0)}</span></div>`;
-
-        html += '<div class="layer-props-field"><label>Position Y</label>';
-        html += `<input type="range" min="-500" max="500" value="${layer.transform.y}" data-prop="y" data-layer="${layer.id}">`;
-        html += `<span class="range-value">${layer.transform.y.toFixed(0)}</span></div>`;
-
-        html += '<div class="layer-props-field"><label>Scale</label>';
-        html += `<input type="range" min="0.1" max="3" step="0.01" value="${layer.transform.scaleX}" data-prop="scaleX" data-layer="${layer.id}">`;
-        html += `<span class="range-value">${layer.transform.scaleX.toFixed(2)}x</span></div>`;
-
-        html += '<div class="layer-props-field"><label>Rotation</label>';
-        html += `<input type="range" min="-180" max="180" value="${layer.transform.rotation}" data-prop="rotation" data-layer="${layer.id}">`;
-        html += `<span class="range-value">${layer.transform.rotation.toFixed(0)}°</span></div>`;
-
-        html += '<div class="layer-props-field"><label>Opacity</label>';
-        html += `<input type="range" min="0" max="1" step="0.01" value="${layer.transform.opacity}" data-prop="opacity" data-layer="${layer.id}">`;
-        html += `<span class="range-value">${(layer.transform.opacity * 100).toFixed(0)}%</span></div>`;
-
-        // Shape color
-        if (layer.shapeData && layer.shapeData.fillEnabled) {
-            html += '<div class="layer-props-field"><label>Fill Color</label>';
-            html += `<div class="layer-props-color"><input type="color" value="${layer.shapeData.fill}" data-prop="fill" data-layer="${layer.id}">`;
-            html += `<span class="range-value">${layer.shapeData.fill}</span></div></div>`;
+        // Debug panel close
+        const btnCloseDebug = document.getElementById('btnCloseDebug');
+        const debugPanel = document.getElementById('debugPanel');
+        if (btnCloseDebug && debugPanel) {
+            btnCloseDebug.addEventListener('click', () => debugPanel.hidden = true);
         }
 
-        // Text properties
-        if (layer.textData) {
-            html += '<div class="layer-props-field"><label>Text</label>';
-            html += `<input type="text" value="${layer.textData.text.replace(/"/g, '&quot;')}" data-prop="text" data-layer="${layer.id}" style="width:100%;padding:8px;background:var(--bg-deep);border:1px solid var(--border-default);border-radius:8px;color:var(--text-primary);font-size:0.82rem;"></div>`;
-
-            html += '<div class="layer-props-field"><label>Font Size</label>';
-            html += `<input type="range" min="8" max="200" value="${layer.textData.fontSize}" data-prop="fontSize" data-layer="${layer.id}">`;
-            html += `<span class="range-value">${layer.textData.fontSize}px</span></div>`;
-
-            html += '<div class="layer-props-field"><label>Text Color</label>';
-            html += `<div class="layer-props-color"><input type="color" value="${layer.textData.color}" data-prop="color" data-layer="${layer.id}">`;
-            html += `<span class="range-value">${layer.textData.color}</span></div></div>`;
+        // Canvas click → debug inspect
+        if (canvas) {
+            canvas.addEventListener('click', (e) => {
+                if (Viewport.isPlaying || !this.project) return;
+                const rect = canvas.getBoundingClientRect();
+                this.inspectLayer(e.clientX - rect.left, e.clientY - rect.top);
+            });
         }
-
-        // Actions
-        html += '<div class="layer-props-actions">';
-        html += `<button class="btn sm" data-action="toggle-visibility" data-layer="${layer.id}">${layer.visible ? 'Sembunyikan' : 'Tampilkan'}</button>`;
-        html += `<button class="btn sm" data-action="delete-layer" data-layer="${layer.id}">Hapus</button>`;
-        html += '</div>';
-
-        layerPropsBody.innerHTML = html;
-
-        // Use event delegation for all inputs
-        layerPropsBody.oninput = (e) => {
-            const input = e.target;
-            if (!input.dataset || !input.dataset.layer) return;
-
-            const layerId = input.dataset.layer;
-            const prop = input.dataset.prop;
-            const value = input.type === 'range' ? parseFloat(input.value) : input.value;
-            const targetLayer = this.project?.layers.find(l => l.id === layerId);
-            if (!targetLayer) return;
-
-            if (prop === 'opacity') {
-                targetLayer.transform.opacity = value;
-            } else if (prop === 'scaleX') {
-                targetLayer.transform.scaleX = value;
-                targetLayer.transform.scaleY = value;
-            } else if (prop === 'fill' && targetLayer.shapeData) {
-                targetLayer.shapeData.fill = value;
-            } else if (prop === 'color' && targetLayer.textData) {
-                targetLayer.textData.color = value;
-            } else if (prop === 'text' && targetLayer.textData) {
-                targetLayer.textData.text = value;
-            } else if (prop === 'fontSize' && targetLayer.textData) {
-                targetLayer.textData.fontSize = value;
-            } else {
-                targetLayer.transform[prop] = value;
-            }
-
-            // Update display value
-            const valueDisplay = input.parentElement?.querySelector('.range-value');
-            if (valueDisplay) {
-                if (prop === 'opacity') valueDisplay.textContent = `${(value * 100).toFixed(0)}%`;
-                else if (prop === 'scaleX') valueDisplay.textContent = `${value.toFixed(2)}x`;
-                else if (prop === 'rotation') valueDisplay.textContent = `${value.toFixed(0)}°`;
-                else if (prop === 'fontSize') valueDisplay.textContent = `${value}px`;
-                else if (prop === 'fill' || prop === 'color') valueDisplay.textContent = value;
-                else valueDisplay.textContent = value.toFixed(0);
-            }
-        };
-
-        // Use event delegation for action buttons
-        layerPropsBody.onclick = (e) => {
-            const btn = e.target.closest('[data-action]');
-            if (!btn) return;
-
-            const action = btn.dataset.action;
-            const layerId = btn.dataset.layer;
-            const targetLayer = this.project?.layers.find(l => l.id === layerId);
-            if (!targetLayer) return;
-
-            if (action === 'toggle-visibility') {
-                targetLayer.visible = !targetLayer.visible;
-                this.showLayerProperties(targetLayer);
-            } else if (action === 'delete-layer') {
-                if (this.project) {
-                    const index = this.project.layers.findIndex(l => l.id === layerId);
-                    if (index !== -1) {
-                        this.project.layers.splice(index, 1);
-                        layerPropsPanel.classList.remove('open');
-                    }
-                }
-            }
-        };
-    },
-
-    showLayerProperties(layer) {
-        const layerPropsBody = document.getElementById('layerPropsBody');
-        const layerPropsTitle = document.getElementById('layerPropsTitle');
-        if (!layerPropsBody || !layerPropsTitle) return;
-
-        layerPropsTitle.textContent = layer.name;
-
-        let html = '';
-
-        // Transform section
-        html += '<div class="layer-props-field"><label>Position X</label>';
-        html += `<input type="range" min="-500" max="500" value="${layer.transform.x}" data-prop="x" data-layer="${layer.id}">`;
-        html += `<span class="range-value">${layer.transform.x.toFixed(0)}</span></div>`;
-
-        html += '<div class="layer-props-field"><label>Position Y</label>';
-        html += `<input type="range" min="-500" max="500" value="${layer.transform.y}" data-prop="y" data-layer="${layer.id}">`;
-        html += `<span class="range-value">${layer.transform.y.toFixed(0)}</span></div>`;
-
-        html += '<div class="layer-props-field"><label>Scale</label>';
-        html += `<input type="range" min="0.1" max="3" step="0.01" value="${layer.transform.scaleX}" data-prop="scaleX" data-layer="${layer.id}">`;
-        html += `<span class="range-value">${layer.transform.scaleX.toFixed(2)}x</span></div>`;
-
-        html += '<div class="layer-props-field"><label>Rotation</label>';
-        html += `<input type="range" min="-180" max="180" value="${layer.transform.rotation}" data-prop="rotation" data-layer="${layer.id}">`;
-        html += `<span class="range-value">${layer.transform.rotation.toFixed(0)}°</span></div>`;
-
-        html += '<div class="layer-props-field"><label>Opacity</label>';
-        html += `<input type="range" min="0" max="1" step="0.01" value="${layer.transform.opacity}" data-prop="opacity" data-layer="${layer.id}">`;
-        html += `<span class="range-value">${(layer.transform.opacity * 100).toFixed(0)}%</span></div>`;
-
-        // Shape color
-        if (layer.shapeData && layer.shapeData.fillEnabled) {
-            html += '<div class="layer-props-field"><label>Fill Color</label>';
-            html += `<div class="layer-props-color"><input type="color" value="${layer.shapeData.fill}" data-prop="fill" data-layer="${layer.id}">`;
-            html += `<span class="range-value">${layer.shapeData.fill}</span></div></div>`;
-        }
-
-        // Text properties
-        if (layer.textData) {
-            html += '<div class="layer-props-field"><label>Text</label>';
-            html += `<input type="text" value="${layer.textData.text.replace(/"/g, '&quot;')}" data-prop="text" data-layer="${layer.id}" style="width:100%;padding:8px;background:var(--bg-deep);border:1px solid var(--border-default);border-radius:8px;color:var(--text-primary);font-size:0.82rem;"></div>`;
-
-            html += '<div class="layer-props-field"><label>Font Size</label>';
-            html += `<input type="range" min="8" max="200" value="${layer.textData.fontSize}" data-prop="fontSize" data-layer="${layer.id}">`;
-            html += `<span class="range-value">${layer.textData.fontSize}px</span></div>`;
-
-            html += '<div class="layer-props-field"><label>Text Color</label>';
-            html += `<div class="layer-props-color"><input type="color" value="${layer.textData.color}" data-prop="color" data-layer="${layer.id}">`;
-            html += `<span class="range-value">${layer.textData.color}</span></div></div>`;
-        }
-
-        // Actions
-        html += '<div class="layer-props-actions">';
-        html += `<button class="btn sm" data-action="toggle-visibility" data-layer="${layer.id}">${layer.visible ? 'Sembunyikan' : 'Tampilkan'}</button>`;
-        html += `<button class="btn sm" data-action="delete-layer" data-layer="${layer.id}">Hapus</button>`;
-        html += '</div>';
-
-        layerPropsBody.innerHTML = html;
-
-        // Bind events
-        layerPropsBody.querySelectorAll('input[type="range"]').forEach(input => {
-            input.addEventListener('input', (e) => {
-                const prop = e.target.dataset.prop;
-                const layerId = e.target.dataset.layer;
-                const value = parseFloat(e.target.value);
-                const targetLayer = this.project?.layers.find(l => l.id === layerId);
-                if (targetLayer) {
-                    if (prop === 'opacity') {
-                        targetLayer.transform.opacity = value;
-                    } else if (prop === 'scaleX') {
-                        targetLayer.transform.scaleX = value;
-                        targetLayer.transform.scaleY = value;
-                    } else {
-                        targetLayer.transform[prop] = value;
-                    }
-                    // Update display value
-                    const valueDisplay = e.target.parentElement.querySelector('.range-value');
-                    if (valueDisplay) {
-                        if (prop === 'opacity') valueDisplay.textContent = `${(value * 100).toFixed(0)}%`;
-                        else if (prop === 'scaleX') valueDisplay.textContent = `${value.toFixed(2)}x`;
-                        else if (prop === 'rotation') valueDisplay.textContent = `${value.toFixed(0)}°`;
-                        else valueDisplay.textContent = value.toFixed(0);
-                    }
-                }
-            });
-        });
-
-        layerPropsBody.querySelectorAll('input[type="color"]').forEach(input => {
-            input.addEventListener('input', (e) => {
-                const prop = e.target.dataset.prop;
-                const layerId = e.target.dataset.layer;
-                const value = e.target.value;
-                const targetLayer = this.project?.layers.find(l => l.id === layerId);
-                if (targetLayer) {
-                    if (prop === 'fill' && targetLayer.shapeData) {
-                        targetLayer.shapeData.fill = value;
-                    } else if (prop === 'color' && targetLayer.textData) {
-                        targetLayer.textData.color = value;
-                    }
-                    const valueDisplay = e.target.parentElement.querySelector('.range-value');
-                    if (valueDisplay) valueDisplay.textContent = value;
-                }
-            });
-        });
-
-        layerPropsBody.querySelectorAll('input[type="text"]').forEach(input => {
-            input.addEventListener('input', (e) => {
-                const prop = e.target.dataset.prop;
-                const layerId = e.target.dataset.layer;
-                const value = e.target.value;
-                const targetLayer = this.project?.layers.find(l => l.id === layerId);
-                if (targetLayer && prop === 'text' && targetLayer.textData) {
-                    targetLayer.textData.text = value;
-                }
-            });
-        });
-
-        layerPropsBody.querySelectorAll('[data-action="toggle-visibility"]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const layerId = btn.dataset.layer;
-                const targetLayer = this.project?.layers.find(l => l.id === layerId);
-                if (targetLayer) {
-                    targetLayer.visible = !targetLayer.visible;
-                    this.showLayerProperties(targetLayer);
-                }
-            });
-        });
-
-        layerPropsBody.querySelectorAll('[data-action="delete-layer"]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const layerId = btn.dataset.layer;
-                if (this.project) {
-                    const index = this.project.layers.findIndex(l => l.id === layerId);
-                    if (index !== -1) {
-                        this.project.layers.splice(index, 1);
-                        layerPropsPanel.classList.remove('open');
-                    }
-                }
-            });
-        });
     },
 
     initEngine() {
-        // Initialize audio context on first interaction
-        document.addEventListener('click', () => {
-            AudioEngine.init();
-        }, { once: true });
+        document.addEventListener('click', () => AudioEngine.init(), { once: true });
     },
 
     loadSample() {
-        const sample = PresetParser.generateSamplePreset();
-        this.setProject(sample);
+        this.setProject(PresetParser.generateSamplePreset());
     },
 
     setProject(project) {
@@ -381,49 +103,162 @@ const App = {
         Timeline.setProject(project);
     },
 
-    // Public API
-    getState() {
-        return {
-            isReady: this.isReady,
-            project: this.project,
-            isPlaying: Viewport.isPlaying,
-            currentTime: Viewport.currentTime,
-            duration: Viewport.duration
-        };
+    selectLayer(layerId) {
+        Timeline.selectLayer(layerId);
+        const layer = this.project?.layers.find(l => l.id === layerId);
+        if (layer) this.showLayerProperties(layer);
     },
 
-    play() { Viewport.play(); },
-    pause() { Viewport.pause(); },
-    seek(time) { Viewport.seek(time); },
+    updateLayerProperty(layerId, prop, value, input) {
+        const layer = this.project?.layers.find(l => l.id === layerId);
+        if (!layer) return;
 
-    async loadPreset(source) {
-        if (typeof source === 'string') {
-            // URL
-            const response = await fetch(source);
-            const text = await response.text();
-            const project = PresetParser.parse(text);
-            this.setProject(project);
-            return project;
-        } else if (source instanceof File) {
-            const text = await Utils.readFileAsText(source);
-            const project = PresetParser.parse(text);
-            this.setProject(project);
-            return project;
+        if (prop === 'opacity') layer.transform.opacity = value;
+        else if (prop === 'scaleX') { layer.transform.scaleX = value; layer.transform.scaleY = value; }
+        else if (prop === 'fill' && layer.shapeData) layer.shapeData.fill = value;
+        else if (prop === 'color' && layer.textData) layer.textData.color = value;
+        else if (prop === 'text' && layer.textData) layer.textData.text = value;
+        else if (prop === 'fontSize' && layer.textData) layer.textData.fontSize = value;
+        else layer.transform[prop] = value;
+
+        // Update display value
+        const display = input.parentElement?.querySelector('.range-value');
+        if (display) {
+            if (prop === 'opacity') display.textContent = `${(value * 100).toFixed(0)}%`;
+            else if (prop === 'scaleX') display.textContent = `${value.toFixed(2)}x`;
+            else if (prop === 'rotation') display.textContent = `${value.toFixed(0)}°`;
+            else if (prop === 'fontSize') display.textContent = `${value}px`;
+            else if (prop === 'fill' || prop === 'color') display.textContent = value;
+            else display.textContent = value.toFixed(0);
         }
     },
 
-    async export(options) {
-        if (!this.project) throw new Error('No project loaded');
-        return Exporter.export(this.project, options);
-    }
+    handleLayerAction(action, layerId) {
+        const layer = this.project?.layers.find(l => l.id === layerId);
+        if (!layer) return;
+        if (action === 'toggle-visibility') { layer.visible = !layer.visible; this.showLayerProperties(layer); }
+        else if (action === 'delete-layer') {
+            const i = this.project.layers.findIndex(l => l.id === layerId);
+            if (i !== -1) { this.project.layers.splice(i, 1); document.getElementById('layerPropsPanel')?.classList.remove('open'); }
+        }
+    },
+
+    showLayerProperties(layer) {
+        const body = document.getElementById('layerPropsBody');
+        const title = document.getElementById('layerPropsTitle');
+        const panel = document.getElementById('layerPropsPanel');
+        if (!body || !title || !panel) return;
+
+        title.textContent = layer.name;
+
+        let html = `<div class="layer-props-field"><label>Position X</label><input type="range" min="-500" max="500" value="${layer.transform.x}" data-prop="x" data-layer="${layer.id}"><span class="range-value">${layer.transform.x.toFixed(0)}</span></div>`;
+        html += `<div class="layer-props-field"><label>Position Y</label><input type="range" min="-500" max="500" value="${layer.transform.y}" data-prop="y" data-layer="${layer.id}"><span class="range-value">${layer.transform.y.toFixed(0)}</span></div>`;
+        html += `<div class="layer-props-field"><label>Scale</label><input type="range" min="0.1" max="3" step="0.01" value="${layer.transform.scaleX}" data-prop="scaleX" data-layer="${layer.id}"><span class="range-value">${layer.transform.scaleX.toFixed(2)}x</span></div>`;
+        html += `<div class="layer-props-field"><label>Rotation</label><input type="range" min="-180" max="180" value="${layer.transform.rotation}" data-prop="rotation" data-layer="${layer.id}"><span class="range-value">${layer.transform.rotation.toFixed(0)}°</span></div>`;
+        html += `<div class="layer-props-field"><label>Opacity</label><input type="range" min="0" max="1" step="0.01" value="${layer.transform.opacity}" data-prop="opacity" data-layer="${layer.id}"><span class="range-value">${(layer.transform.opacity * 100).toFixed(0)}%</span></div>`;
+
+        if (layer.shapeData?.fillEnabled) {
+            html += `<div class="layer-props-field"><label>Fill Color</label><div class="layer-props-color"><input type="color" value="${layer.shapeData.fill}" data-prop="fill" data-layer="${layer.id}"><span class="range-value">${layer.shapeData.fill}</span></div></div>`;
+        }
+
+        if (layer.textData) {
+            html += `<div class="layer-props-field"><label>Text</label><input type="text" value="${layer.textData.text.replace(/"/g, '&quot;')}" data-prop="text" data-layer="${layer.id}" style="width:100%;padding:8px;background:var(--bg-deep);border:1px solid var(--border-default);border-radius:8px;color:var(--text-primary);font-size:0.82rem;"></div>`;
+            html += `<div class="layer-props-field"><label>Font Size</label><input type="range" min="8" max="200" value="${layer.textData.fontSize}" data-prop="fontSize" data-layer="${layer.id}"><span class="range-value">${layer.textData.fontSize}px</span></div>`;
+            html += `<div class="layer-props-field"><label>Text Color</label><div class="layer-props-color"><input type="color" value="${layer.textData.color}" data-prop="color" data-layer="${layer.id}"><span class="range-value">${layer.textData.color}</span></div></div>`;
+        }
+
+        html += `<div class="layer-props-actions"><button class="btn sm" data-action="toggle-visibility" data-layer="${layer.id}">${layer.visible ? 'Sembunyikan' : 'Tampilkan'}</button><button class="btn sm" data-action="delete-layer" data-layer="${layer.id}">Hapus</button></div>`;
+
+        body.innerHTML = html;
+        panel.classList.add('open');
+    },
+
+    inspectLayer(x, y) {
+        if (!this.project) return;
+        const panel = document.getElementById('debugPanel');
+        const content = document.getElementById('debugContent');
+        if (!panel || !content) return;
+
+        const layers = [...this.project.layers].reverse();
+        let found = null;
+
+        for (const layer of layers) {
+            if (!layer.visible) continue;
+            const t = Renderer.getAnimatedTransform(layer, Viewport.currentTime);
+            const w = Renderer.getLayerWidth(layer);
+            const h = Renderer.getLayerHeight(layer);
+            const cx = t.x + Renderer.width / 2;
+            const cy = t.y + Renderer.height / 2;
+            if (x >= cx - (w * t.scaleX) / 2 && x <= cx + (w * t.scaleX) / 2 && y >= cy - (h * t.scaleY) / 2 && y <= cy + (h * t.scaleY) / 2) {
+                found = layer;
+                break;
+            }
+        }
+
+        if (!found) {
+            content.innerHTML = '<div class="debug-empty">Tidak ada layer di posisi ini</div>';
+            panel.hidden = false;
+            return;
+        }
+
+        const t = Renderer.getAnimatedTransform(found, Viewport.currentTime);
+        let html = `<div class="debug-layer-name">${Utils.escapeHtml(found.name)}</div>`;
+        html += `<div class="debug-row"><span class="debug-label">Type</span><span class="debug-value">${found.type}</span></div>`;
+        html += `<div class="debug-row"><span class="debug-label">Opacity</span><span class="debug-value">${(t.opacity * 100).toFixed(0)}%</span></div>`;
+        html += `<div class="debug-row"><span class="debug-label">Position</span><span class="debug-value">${t.x.toFixed(1)}, ${t.y.toFixed(1)}</span></div>`;
+        html += `<div class="debug-row"><span class="debug-label">Scale</span><span class="debug-value">${t.scaleX.toFixed(2)}x</span></div>`;
+        html += `<div class="debug-row"><span class="debug-label">Rotation</span><span class="debug-value">${t.rotation.toFixed(1)}°</span></div>`;
+
+        const tracks = found.tracks || {};
+        if (Object.keys(tracks).length > 0) {
+            html += '<div class="debug-section"><div class="debug-section-title">Keyframes</div>';
+            for (const [prop, track] of Object.entries(tracks)) {
+                html += `<div class="debug-row"><span class="debug-label">${prop}</span><span class="debug-value">${track.keyframes.length} kf</span></div>`;
+            }
+            html += '</div>';
+        }
+
+        const effects = found.effects || [];
+        if (effects.length > 0) {
+            html += '<div class="debug-section"><div class="debug-section-title">Effects</div>';
+            for (const effect of effects) {
+                html += `<div class="debug-effect"><div class="debug-effect-name">${Utils.escapeHtml(effect.name)}</div></div>`;
+            }
+            html += '</div>';
+        }
+
+        if (found.shapeData) {
+            html += '<div class="debug-section"><div class="debug-section-title">Shape</div>';
+            html += `<div class="debug-row"><span class="debug-label">Type</span><span class="debug-value">${found.shapeData.shapeType}</span></div>`;
+            html += `<div class="debug-row"><span class="debug-label">Fill</span><span class="debug-value">${found.shapeData.fill}</span></div>`;
+            html += '</div>';
+        }
+
+        if (found.textData) {
+            html += '<div class="debug-section"><div class="debug-section-title">Text</div>';
+            html += `<div class="debug-row"><span class="debug-label">Content</span><span class="debug-value">${Utils.escapeHtml(found.textData.text)}</span></div>`;
+            html += `<div class="debug-row"><span class="debug-label">Font</span><span class="debug-value">${found.textData.fontFamily} ${found.textData.fontSize}px</span></div>`;
+            html += '</div>';
+        }
+
+        content.innerHTML = html;
+        panel.hidden = false;
+    },
+
+    // Public API
+    getState() {
+        return { isReady: this.isReady, project: this.project, isPlaying: Viewport.isPlaying, currentTime: Viewport.currentTime };
+    },
+    play() { Viewport.play(); },
+    pause() { Viewport.pause(); },
+    seek(time) { Viewport.seek(time); },
 };
 
-// Start app when DOM is ready
+// Start
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => App.init());
 } else {
     App.init();
 }
 
-// Expose to global scope
 window.RyoMotion = App;
