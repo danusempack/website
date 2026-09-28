@@ -121,17 +121,7 @@ const Panels = {
         try {
             this.showStatus('amStatus', 'Mengambil dari Alight Motion...');
 
-            // Try multiple CORS proxies in parallel with timeout
-            const proxyUrls = [
-                `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-                `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
-                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-                `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`,
-                `https://corsproxy.org/?url=${encodeURIComponent(url)}`,
-                `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-            ];
-
-            // Fetch with timeout
+            // Helper: fetch with timeout
             const fetchWithTimeout = (fetchPromise, ms) => {
                 return Promise.race([
                     fetchPromise,
@@ -139,53 +129,60 @@ const Panels = {
                 ]);
             };
 
-            // Try all proxies in parallel
-            const promises = proxyUrls.map(proxyUrl =>
-                fetchWithTimeout(fetch(proxyUrl), 10000)
-                    .then(r => r.ok ? r.text() : null)
+            // Helper: normalize proxy response to text
+            const normalizeResponse = async (response) => {
+                const text = await response.text();
+                // allorigins /get/ returns JSON: { contents: "..." }
+                if (text.startsWith('{') && text.includes('contents')) {
+                    try {
+                        const data = JSON.parse(text);
+                        if (data.contents) return data.contents;
+                    } catch (e) { /* Not JSON */ }
+                }
+                return text;
+            };
+
+            // Round 1: Try multiple CORS proxies in parallel
+            const round1Proxies = [
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+                `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+                `https://api.cors.lol/?url=${encodeURIComponent(url)}`,
+                `https://proxy.corsfix.com/?url=${encodeURIComponent(url)}`,
+                `https://corsproxy.org/?url=${encodeURIComponent(url)}`,
+            ];
+
+            const round1Promises = round1Proxies.map(proxyUrl =>
+                fetchWithTimeout(fetch(proxyUrl), 15000)
+                    .then(r => r.ok ? normalizeResponse(r) : null)
                     .catch(() => null)
             );
 
-            const results = await Promise.all(promises);
+            const round1Results = await Promise.all(round1Promises);
 
-            // Find first valid result
+            // Find first valid HTML result
             let html = null;
-            for (const text of results) {
-                if (text && text.length > 100) {
-                    if (text.startsWith('{') && text.includes('contents')) {
-                        try {
-                            const data = JSON.parse(text);
-                            if (data.contents && data.contents.length > 100) {
-                                html = data.contents;
-                                break;
-                            }
-                        } catch (e) { /* Not JSON */ }
-                    } else if (!text.startsWith('<html') && !text.includes('<!DOCTYPE html>')) {
-                        html = text;
-                        break;
-                    } else if (text.length > 500) {
-                        // Might be HTML from Alight Creative
-                        html = text;
-                        break;
-                    }
+            for (const text of round1Results) {
+                if (text && text.length > 200 && (text.includes('<!DOCTYPE') || text.includes('<html') || text.includes('alight'))) {
+                    html = text;
+                    break;
                 }
             }
 
+            // Round 2: If round 1 failed, try more proxies sequentially
             if (!html) {
-                // Try sequential fallback with more proxies
-                const moreProxies = [
-                    `https://cors.bridged.cc/${encodeURIComponent(url)}`,
-                    `https://proxy.cors.sh/${encodeURIComponent(url)}`,
-                    `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
-                    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+                const round2Proxies = [
+                    `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`,
+                    `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+                    `https://cors-anywhere.herokuapp.com/${encodeURIComponent(url)}`,
                 ];
 
-                for (const proxyUrl of moreProxies) {
+                for (const proxyUrl of round2Proxies) {
                     try {
-                        const response = await fetchWithTimeout(fetch(proxyUrl), 8000);
+                        const response = await fetchWithTimeout(fetch(proxyUrl), 12000);
                         if (response.ok) {
-                            const text = await response.text();
-                            if (text && text.length > 100) {
+                            const text = await normalizeResponse(response);
+                            if (text && text.length > 200) {
                                 html = text;
                                 break;
                             }
@@ -200,7 +197,7 @@ const Panels = {
                 throw new Error('Semua proxy gagal. Upload XML langsung.');
             }
 
-            // Try to extract preset data from HTML
+            // Extract preset data from HTML
             const data = this.extractDataFromHtml(html);
 
             if (data) {
@@ -211,20 +208,23 @@ const Panels = {
                 return;
             }
 
-            // Try to find Firebase Storage data URL
-            const fbMatch = html.match(/https?:\/\/firebasestorage\.googleapis\.com[^"'\s]+/i);
-            if (fbMatch) {
-                const fbUrl = fbMatch[0].replace(/\\u0026/g, '&').replace(/\\u003d/g, '=');
+            // Extract Firebase Storage URLs from HTML and fetch preset data
+            const fbMatches = html.match(/https?:\/\/firebasestorage\.googleapis\.com[^"'\s<>]+/gi) || [];
+            const uniqueFbUrls = [...new Set(fbMatches)].slice(0, 5);
 
-                // Try to fetch Firebase data through proxies
+            for (const fbUrl of uniqueFbUrls) {
+                const cleanFbUrl = fbUrl.replace(/\\u0026/g, '&').replace(/\\u003d/g, '=');
+
+                // Try to fetch Firebase data through multiple proxies
                 const fbProxyUrls = [
-                    `https://api.allorigins.win/raw?url=${encodeURIComponent(fbUrl)}`,
-                    `https://corsproxy.io/?url=${encodeURIComponent(fbUrl)}`,
-                    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(fbUrl)}`,
+                    `https://api.allorigins.win/raw?url=${encodeURIComponent(cleanFbUrl)}`,
+                    `https://corsproxy.io/?url=${encodeURIComponent(cleanFbUrl)}`,
+                    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(cleanFbUrl)}`,
+                    `https://api.cors.lol/?url=${encodeURIComponent(cleanFbUrl)}`,
                 ];
 
                 const fbPromises = fbProxyUrls.map(proxyUrl =>
-                    fetchWithTimeout(fetch(proxyUrl), 10000)
+                    fetchWithTimeout(fetch(proxyUrl), 12000)
                         .then(r => r.ok ? r.text() : null)
                         .catch(() => null)
                 );
@@ -233,14 +233,28 @@ const Panels = {
 
                 for (const fbText of fbResults) {
                     if (fbText && !fbText.startsWith('<') && fbText.length > 50) {
+                        // Try JSON parse
                         try {
                             const parsed = JSON.parse(fbText);
-                            const project = this.buildPresetFromData(parsed, url);
-                            this.setProject(project);
-                            App.setProject(project);
-                            this.showStatus('amStatus', `Berhasil: ${project.name} (${project.layers.length} layers)`, 'success');
-                            return;
+                            if (parsed.layers || parsed.project || parsed.preset) {
+                                const project = this.buildPresetFromData(parsed, url);
+                                this.setProject(project);
+                                App.setProject(project);
+                                this.showStatus('amStatus', `Berhasil: ${project.name} (${project.layers.length} layers)`, 'success');
+                                return;
+                            }
                         } catch (e) { /* Not JSON */ }
+
+                        // Try XML parse
+                        try {
+                            const project = PresetParser.parse(fbText);
+                            if (project.layers.length > 0) {
+                                this.setProject(project);
+                                App.setProject(project);
+                                this.showStatus('amStatus', `Berhasil: ${project.name} (${project.layers.length} layers)`, 'success');
+                                return;
+                            }
+                        } catch (e) { /* Not XML */ }
                     }
                 }
             }
