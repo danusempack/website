@@ -155,77 +155,60 @@ const App = {
 
         layerPropsBody.innerHTML = html;
 
-        // Bind events
-        layerPropsBody.querySelectorAll('input[type="range"]').forEach(input => {
-            input.addEventListener('input', (e) => {
-                const prop = e.target.dataset.prop;
-                const layerId = e.target.dataset.layer;
-                const value = parseFloat(e.target.value);
-                const targetLayer = this.project?.layers.find(l => l.id === layerId);
-                if (targetLayer) {
-                    if (prop === 'opacity') {
-                        targetLayer.transform.opacity = value;
-                    } else if (prop === 'scaleX') {
-                        targetLayer.transform.scaleX = value;
-                        targetLayer.transform.scaleY = value;
-                    } else {
-                        targetLayer.transform[prop] = value;
-                    }
-                    const valueDisplay = e.target.parentElement.querySelector('.range-value');
-                    if (valueDisplay) {
-                        if (prop === 'opacity') valueDisplay.textContent = `${(value * 100).toFixed(0)}%`;
-                        else if (prop === 'scaleX') valueDisplay.textContent = `${value.toFixed(2)}x`;
-                        else if (prop === 'rotation') valueDisplay.textContent = `${value.toFixed(0)}°`;
-                        else valueDisplay.textContent = value.toFixed(0);
-                    }
-                }
-            });
-        });
+        // Use event delegation for all inputs
+        layerPropsBody.oninput = (e) => {
+            const input = e.target;
+            if (!input.dataset || !input.dataset.layer) return;
 
-        layerPropsBody.querySelectorAll('input[type="color"]').forEach(input => {
-            input.addEventListener('input', (e) => {
-                const prop = e.target.dataset.prop;
-                const layerId = e.target.dataset.layer;
-                const value = e.target.value;
-                const targetLayer = this.project?.layers.find(l => l.id === layerId);
-                if (targetLayer) {
-                    if (prop === 'fill' && targetLayer.shapeData) {
-                        targetLayer.shapeData.fill = value;
-                    } else if (prop === 'color' && targetLayer.textData) {
-                        targetLayer.textData.color = value;
-                    }
-                    const valueDisplay = e.target.parentElement.querySelector('.range-value');
-                    if (valueDisplay) valueDisplay.textContent = value;
-                }
-            });
-        });
+            const layerId = input.dataset.layer;
+            const prop = input.dataset.prop;
+            const value = input.type === 'range' ? parseFloat(input.value) : input.value;
+            const targetLayer = this.project?.layers.find(l => l.id === layerId);
+            if (!targetLayer) return;
 
-        layerPropsBody.querySelectorAll('input[type="text"]').forEach(input => {
-            input.addEventListener('input', (e) => {
-                const prop = e.target.dataset.prop;
-                const layerId = e.target.dataset.layer;
-                const value = e.target.value;
-                const targetLayer = this.project?.layers.find(l => l.id === layerId);
-                if (targetLayer && prop === 'text' && targetLayer.textData) {
-                    targetLayer.textData.text = value;
-                }
-            });
-        });
+            if (prop === 'opacity') {
+                targetLayer.transform.opacity = value;
+            } else if (prop === 'scaleX') {
+                targetLayer.transform.scaleX = value;
+                targetLayer.transform.scaleY = value;
+            } else if (prop === 'fill' && targetLayer.shapeData) {
+                targetLayer.shapeData.fill = value;
+            } else if (prop === 'color' && targetLayer.textData) {
+                targetLayer.textData.color = value;
+            } else if (prop === 'text' && targetLayer.textData) {
+                targetLayer.textData.text = value;
+            } else if (prop === 'fontSize' && targetLayer.textData) {
+                targetLayer.textData.fontSize = value;
+            } else {
+                targetLayer.transform[prop] = value;
+            }
 
-        layerPropsBody.querySelectorAll('[data-action="toggle-visibility"]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const layerId = btn.dataset.layer;
-                const targetLayer = this.project?.layers.find(l => l.id === layerId);
-                if (targetLayer) {
-                    targetLayer.visible = !targetLayer.visible;
-                    this.showLayerProperties(targetLayer);
-                }
-            });
-        });
+            // Update display value
+            const valueDisplay = input.parentElement?.querySelector('.range-value');
+            if (valueDisplay) {
+                if (prop === 'opacity') valueDisplay.textContent = `${(value * 100).toFixed(0)}%`;
+                else if (prop === 'scaleX') valueDisplay.textContent = `${value.toFixed(2)}x`;
+                else if (prop === 'rotation') valueDisplay.textContent = `${value.toFixed(0)}°`;
+                else if (prop === 'fontSize') valueDisplay.textContent = `${value}px`;
+                else if (prop === 'fill' || prop === 'color') valueDisplay.textContent = value;
+                else valueDisplay.textContent = value.toFixed(0);
+            }
+        };
 
-        layerPropsBody.querySelectorAll('[data-action="delete-layer"]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const layerId = btn.dataset.layer;
+        // Use event delegation for action buttons
+        layerPropsBody.onclick = (e) => {
+            const btn = e.target.closest('[data-action]');
+            if (!btn) return;
+
+            const action = btn.dataset.action;
+            const layerId = btn.dataset.layer;
+            const targetLayer = this.project?.layers.find(l => l.id === layerId);
+            if (!targetLayer) return;
+
+            if (action === 'toggle-visibility') {
+                targetLayer.visible = !targetLayer.visible;
+                this.showLayerProperties(targetLayer);
+            } else if (action === 'delete-layer') {
                 if (this.project) {
                     const index = this.project.layers.findIndex(l => l.id === layerId);
                     if (index !== -1) {
@@ -233,8 +216,8 @@ const App = {
                         layerPropsPanel.classList.remove('open');
                     }
                 }
-            });
-        });
+            }
+        };
     },
 
     showLayerProperties(layer) {
