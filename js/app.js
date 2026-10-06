@@ -48,6 +48,15 @@ const App = {
             });
         }
 
+        // Side panel close button
+        const btnClosePanel = document.getElementById('btnClosePanel');
+        const sidePanel = document.getElementById('sidePanel');
+        if (btnClosePanel && sidePanel) {
+            btnClosePanel.addEventListener('click', () => {
+                sidePanel.classList.remove('open');
+            });
+        }
+
         // Layer properties panel close
         const btnClose = document.getElementById('btnCloseLayerProps');
         const panel = document.getElementById('layerPropsPanel');
