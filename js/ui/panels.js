@@ -49,6 +49,11 @@ const Panels = {
         document.querySelectorAll('.pane').forEach(pane => {
             pane.classList.toggle('active', pane.id === `pane-${tabName}`);
         });
+        // Open side panel on mobile when tab is clicked
+        const sidePanel = document.getElementById('sidePanel');
+        if (sidePanel && window.innerWidth < 900) {
+            sidePanel.classList.add('open');
+        }
     },
 
     // ── Project Tab ────────────────────────────────────────────────────────
